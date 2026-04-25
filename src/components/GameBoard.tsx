@@ -47,6 +47,8 @@ export function GameBoard({ game }: GameBoardProps) {
           conversations={gameState.conversations}
           npcStates={gameState.npcStates}
           discoveredClues={game.discoveredClues}
+          streamingText={game.streamingText ?? null}
+          loading={game.loading ?? false}
           onExamine={game.examine}
           onTalkTo={game.talkTo}
           onSendMessage={game.sendMessage}

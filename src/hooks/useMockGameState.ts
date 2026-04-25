@@ -312,6 +312,15 @@ export interface MockGameState {
   /** Derived: 0–1 progress through evidence chain. */
   progress: number;
 
+  /** Text currently streaming from NPC. Null when idle. (Always null in mock.) */
+  streamingText: string | null;
+
+  /** Whether an API call is in flight. (Always false in mock.) */
+  loading: boolean;
+
+  /** Last error message. (Always null in mock.) */
+  error: string | null;
+
   // -- Actions --
 
   /** Start a new game with the Blue Parrot mystery. */
@@ -484,6 +493,9 @@ export function useMockGameState(): MockGameState {
     visitedLocations: derived.visitedLocations,
     interviewedCharacters: derived.interviewedCharacters,
     progress: derived.progress,
+    streamingText: null,
+    loading: false,
+    error: null,
     startGame,
     moveTo,
     examine,

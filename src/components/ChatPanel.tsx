@@ -37,6 +37,10 @@ interface ChatPanelProps {
   character: Character;
   conversation: Conversation | undefined;
   npcState: NPCState | undefined;
+  /** Text currently streaming from the NPC. Null when idle. */
+  streamingText: string | null;
+  /** Whether an API call is in flight. */
+  loading: boolean;
   onSendMessage: (message: string) => void;
   onEndConversation: () => void;
 }
@@ -49,20 +53,22 @@ export function ChatPanel({
   character,
   conversation,
   npcState,
+  streamingText,
+  loading,
   onSendMessage,
   onEndConversation,
 }: ChatPanelProps) {
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom when messages change
+  // Auto-scroll to bottom when messages or streaming text change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [conversation?.messages]);
+  }, [conversation?.messages, streamingText]);
 
   const handleSend = () => {
     const trimmed = input.trim();
-    if (!trimmed) return;
+    if (!trimmed || loading) return;
     onSendMessage(trimmed);
     setInput("");
   };
@@ -153,6 +159,19 @@ export function ChatPanel({
                 </div>
               );
             })}
+            {/* Streaming response bubble */}
+            {streamingText !== null && (
+              <div className="flex justify-start">
+                <span className="mr-2 mt-1 shrink-0 text-xs font-medium text-[var(--text-muted)]">
+                  {firstName}
+                </span>
+                <div className="max-w-[75%] rounded-lg bg-neutral-800 px-3 py-2 text-sm leading-relaxed text-[var(--text-primary)]">
+                  {streamingText || (
+                    <span className="animate-pulse text-[var(--text-muted)]">…</span>
+                  )}
+                </div>
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
         )}
@@ -171,7 +190,7 @@ export function ChatPanel({
           />
           <button
             onClick={handleSend}
-            disabled={!input.trim()}
+            disabled={!input.trim() || loading}
             className="rounded bg-neutral-700 px-4 py-2 text-sm font-medium text-[var(--text-primary)] transition-colors hover:bg-neutral-600 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Send

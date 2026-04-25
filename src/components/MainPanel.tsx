@@ -18,13 +18,15 @@ interface MainPanelProps {
   conversations: Conversation[];
   npcStates: Record<string, NPCState>;
   discoveredClues: Clue[];
+  streamingText: string | null;
+  loading: boolean;
   onExamine: (query: string) => void;
   onTalkTo: (characterId: string) => void;
   onSendMessage: (characterId: string, message: string) => void;
   onEndConversation: () => void;
 }
 
-export function MainPanel({ mystery, focus, explorations, conversations, npcStates, discoveredClues, onExamine, onTalkTo, onSendMessage, onEndConversation }: MainPanelProps) {
+export function MainPanel({ mystery, focus, explorations, conversations, npcStates, discoveredClues, streamingText, loading, onExamine, onTalkTo, onSendMessage, onEndConversation }: MainPanelProps) {
   const contextName =
     focus.type === "location"
       ? mystery.locations.find((l) => l.id === focus.id)?.name ?? "Unknown Location"
@@ -78,6 +80,8 @@ export function MainPanel({ mystery, focus, explorations, conversations, npcStat
                 character={character}
                 conversation={conversation}
                 npcState={npcState}
+                streamingText={streamingText}
+                loading={loading}
                 onSendMessage={(msg) => onSendMessage(focus.id, msg)}
                 onEndConversation={onEndConversation}
               />
