@@ -6,15 +6,20 @@
  * Includes a context header showing current location/character name.
  */
 
-import type { Mystery } from "../../types/mystery";
-import type { Focus } from "../../types/state";
+import type { Mystery, Clue } from "../../types/mystery";
+import type { Focus, Exploration } from "../../types/state";
+import { LocationView } from "./LocationView";
 
 interface MainPanelProps {
   mystery: Mystery;
   focus: Focus;
+  explorations: Exploration[];
+  discoveredClues: Clue[];
+  onExamine: (query: string) => void;
+  onTalkTo: (characterId: string) => void;
 }
 
-export function MainPanel({ mystery, focus }: MainPanelProps) {
+export function MainPanel({ mystery, focus, explorations, discoveredClues, onExamine, onTalkTo }: MainPanelProps) {
   const contextName =
     focus.type === "location"
       ? mystery.locations.find((l) => l.id === focus.id)?.name ?? "Unknown Location"
@@ -35,12 +40,27 @@ export function MainPanel({ mystery, focus }: MainPanelProps) {
         </span>
       </div>
 
-      {/* Content area — placeholder for LocationView / ChatPanel */}
-      <div className="flex-1 overflow-y-auto p-5">
+      {/* Content area */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {focus.type === "location" ? (
-          <LocationPlaceholder
-            locationId={focus.id}
-            mystery={mystery}
+          <LocationView
+            location={mystery.locations.find((l) => l.id === focus.id)!}
+            discoveredClues={discoveredClues}
+            examineHistory={explorations
+              .filter((e) => e.locationId === focus.id && !e.query.startsWith("Moved to "))
+              .map((e) => ({
+                query: e.query,
+                narrative: e.narrative,
+                clueFound: e.clueFound,
+              }))}
+            charactersPresent={mystery.locations
+              .find((l) => l.id === focus.id)
+              ?.charactersPresent.map((cid) => ({
+                id: cid,
+                name: mystery.characters.find((c) => c.id === cid)?.name ?? cid,
+              })) ?? []}
+            onExamine={onExamine}
+            onTalkTo={onTalkTo}
           />
         ) : (
           <CharacterPlaceholder
@@ -48,53 +68,6 @@ export function MainPanel({ mystery, focus }: MainPanelProps) {
             mystery={mystery}
           />
         )}
-      </div>
-    </div>
-  );
-}
-
-/**
- * Placeholder for LocationView — will be replaced by item-5.
- * Shows location description and examinables list.
- */
-function LocationPlaceholder({
-  locationId,
-  mystery,
-}: {
-  locationId: string;
-  mystery: Mystery;
-}) {
-  const location = mystery.locations.find((l) => l.id === locationId);
-  if (!location) {
-    return <p className="text-[var(--text-muted)]">Location not found.</p>;
-  }
-
-  return (
-    <div className="space-y-6">
-      <p className="leading-relaxed text-[var(--text-primary)]" style={{ fontFamily: "Georgia, serif" }}>
-        {location.description}
-      </p>
-
-      {location.charactersPresent.length > 0 && (
-        <div className="text-sm text-[var(--text-muted)]">
-          <span className="text-xs uppercase tracking-wider">Present: </span>
-          {location.charactersPresent
-            .map((cid) => mystery.characters.find((c) => c.id === cid)?.name ?? cid)
-            .join(", ")}
-        </div>
-      )}
-
-      <div className="border-t border-[var(--border-subtle)] pt-4">
-        <p className="text-xs uppercase tracking-wider text-[var(--text-muted)]">
-          Things to examine:
-        </p>
-        <ul className="mt-2 space-y-1">
-          {location.examinables.map((ex) => (
-            <li key={ex.id} className="text-sm text-[var(--text-muted)]">
-              • {ex.name} — <span className="italic">{ex.surfaceDetail}</span>
-            </li>
-          ))}
-        </ul>
       </div>
     </div>
   );

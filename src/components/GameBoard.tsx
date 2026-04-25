@@ -73,7 +73,14 @@ export function GameBoard({ game }: GameBoardProps) {
         </div>
 
         {/* Center panel — Main interaction */}
-        <MainPanel mystery={mystery} focus={gameState.focus} />
+        <MainPanel
+          mystery={mystery}
+          focus={gameState.focus}
+          explorations={gameState.explorations}
+          discoveredClues={game.discoveredClues}
+          onExamine={game.examine}
+          onTalkTo={game.talkTo}
+        />
 
         {/* Right panel — Notes */}
         <NotesPanel notes={game.notes} onUpdateNotes={game.updateNotes} />
