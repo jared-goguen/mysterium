@@ -1,11 +1,29 @@
 {
-  "name": "mystery-game",
+  "name": "mysterium",
   "private": true,
   "type": "module",
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "hono": "^4.7.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
   },
   "devDependencies": {
-    "typescript": "^6.0.3"
+    "@cloudflare/workers-types": "^4.20250418.0",
+    "@tailwindcss/vite": "^4.1.4",
+    "@types/bun": "^1.3.13",
+    "@types/node": "^25.6.0",
+    "@types/react": "^19.1.2",
+    "@types/react-dom": "^19.1.2",
+    "@vitejs/plugin-react": "^4.4.1",
+    "tailwindcss": "^4.1.4",
+    "typescript": "^6.0.3",
+    "vite": "^6.3.3",
+    "wrangler": "^4.14.0"
   }
 }

@@ -5,8 +5,15 @@
     "moduleResolution": "bundler",
     "strict": true,
     "noUncheckedIndexedAccess": true,
-    "paths": { "@/*": ["./*"] }
+    "jsx": "react-jsx",
+    "jsxImportSource": "react",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "skipLibCheck": true,
+    "types": ["bun"]
   },
   "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "dist"]
 }

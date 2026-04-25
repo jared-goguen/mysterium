@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+:root {
+  --bg-primary: #0a0a0a;
+  --bg-panel: #141414;
+  --bg-input: #0d0d0d;
+  --text-primary: #e8e4df;
+  --text-muted: #8a8580;
+  --accent-clue: #d4a843;
+  --accent-danger: #b44a4a;
+  --border-subtle: #1f1f1f;
+}
+
+body {
+  font-family: system-ui, "Georgia", "Times New Roman", serif;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+}
+
+/* Scrollbar styling for the noir theme */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #444;
+}

@@ -1,0 +1,3 @@
+name = "mysterium"
+compatibility_date = "2025-04-25"
+pages_build_output_dir = "dist"
