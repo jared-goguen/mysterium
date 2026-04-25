@@ -5,7 +5,8 @@
  *   callTool()   — non-streaming, returns parsed tool result
  *   streamChat() — streaming, returns a ReadableStream of text deltas
  *
- * All engines use Haiku for speed and cost.
+ * Model routing: Haiku 4.5 (fast) for structured extraction,
+ * Sonnet 4.5 (quality) for roleplay and evaluation.
  */
 
 import Anthropic from "@anthropic-ai/sdk";
@@ -13,9 +14,9 @@ import type { Tool, MessageParam } from "@anthropic-ai/sdk/resources/messages";
 
 export const MODELS = {
   /** Fast + cheap. For structured extraction: examiner, clue detector, summarizer. */
-  fast: "claude-haiku-4-20250414",
+  fast: "claude-haiku-4-5-20251001",
   /** Quality roleplay + writing. For conversant and judge. */
-  quality: "claude-sonnet-4-20250514",
+  quality: "claude-sonnet-4-5-20250929",
 } as const;
 
 export type ModelTier = keyof typeof MODELS;
