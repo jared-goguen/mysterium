@@ -7,19 +7,24 @@
  */
 
 import type { Mystery, Clue } from "../../types/mystery";
-import type { Focus, Exploration } from "../../types/state";
+import type { Focus, Exploration, Conversation, NPCState } from "../../types/state";
 import { LocationView } from "./LocationView";
+import { ChatPanel } from "./ChatPanel";
 
 interface MainPanelProps {
   mystery: Mystery;
   focus: Focus;
   explorations: Exploration[];
+  conversations: Conversation[];
+  npcStates: Record<string, NPCState>;
   discoveredClues: Clue[];
   onExamine: (query: string) => void;
   onTalkTo: (characterId: string) => void;
+  onSendMessage: (characterId: string, message: string) => void;
+  onEndConversation: () => void;
 }
 
-export function MainPanel({ mystery, focus, explorations, discoveredClues, onExamine, onTalkTo }: MainPanelProps) {
+export function MainPanel({ mystery, focus, explorations, conversations, npcStates, discoveredClues, onExamine, onTalkTo, onSendMessage, onEndConversation }: MainPanelProps) {
   const contextName =
     focus.type === "location"
       ? mystery.locations.find((l) => l.id === focus.id)?.name ?? "Unknown Location"
@@ -63,41 +68,25 @@ export function MainPanel({ mystery, focus, explorations, discoveredClues, onExa
             onTalkTo={onTalkTo}
           />
         ) : (
-          <CharacterPlaceholder
-            characterId={focus.id}
-            mystery={mystery}
-          />
+          (() => {
+            const character = mystery.characters.find((c) => c.id === focus.id);
+            if (!character) return <p className="p-4 text-[var(--text-muted)]">Character not found.</p>;
+            const conversation = conversations.find((c) => c.characterId === focus.id);
+            const npcState = npcStates[focus.id];
+            return (
+              <ChatPanel
+                character={character}
+                conversation={conversation}
+                npcState={npcState}
+                onSendMessage={(msg) => onSendMessage(focus.id, msg)}
+                onEndConversation={onEndConversation}
+              />
+            );
+          })()
         )}
       </div>
     </div>
   );
 }
 
-/**
- * Placeholder for ChatPanel — will be replaced by item-6.
- * Shows character description and personality.
- */
-function CharacterPlaceholder({
-  characterId,
-  mystery,
-}: {
-  characterId: string;
-  mystery: Mystery;
-}) {
-  const character = mystery.characters.find((c) => c.id === characterId);
-  if (!character) {
-    return <p className="text-[var(--text-muted)]">Character not found.</p>;
-  }
 
-  return (
-    <div className="space-y-4">
-      <p className="text-[var(--text-primary)]">{character.description}</p>
-      <p className="text-sm italic text-[var(--text-muted)]">
-        {character.personality}
-      </p>
-      <p className="text-xs text-[var(--text-muted)]">
-        Speech: {character.speechPattern}
-      </p>
-    </div>
-  );
-}
