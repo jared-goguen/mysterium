@@ -1,4 +1,4 @@
-import { useMockGameState } from "./hooks/useMockGameState";
+import { useGameState } from "./hooks/useGameState";
 import { GameBoard } from "./components/GameBoard";
 
 function LandingPage({ onStart }: { onStart: () => void }) {
@@ -48,7 +48,7 @@ function LandingPage({ onStart }: { onStart: () => void }) {
 }
 
 export function App() {
-  const game = useMockGameState();
+  const game = useGameState();
 
   if (!game.isPlaying) {
     return <LandingPage onStart={game.startGame} />;

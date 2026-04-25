@@ -3,80 +3,49 @@
  *
  * Displays a chronological list of investigation events: moves, examinations,
  * clue discoveries, conversations, and accusations. Newest entries at the
- * bottom; auto-scrolls on new entries. Expandable detail for examine/clue/
- * conversation/accusation entries.
+ * bottom; auto-scrolls on new entries.
  */
 
-import { useRef, useEffect, useState } from "react";
-import type { LogEntry } from "../hooks/useMockGameState";
-
-// ---------------------------------------------------------------------------
-// Icon map
-// ---------------------------------------------------------------------------
-
-const ICONS: Record<LogEntry["type"], string> = {
-  move: "📍",
-  examine: "🔎",
-  clue: "🔍",
-  conversation: "💬",
-  accusation: "⚖️",
-};
+import { useRef, useEffect } from "react";
+import type { EventEntry } from "../../lib/events";
 
 // ---------------------------------------------------------------------------
 // Single event row
 // ---------------------------------------------------------------------------
 
-interface EventRowProps {
-  entry: LogEntry;
-}
-
-function EventRow({ entry }: EventRowProps) {
-  const [expanded, setExpanded] = useState(false);
-  const hasDetail = Boolean(entry.detail);
-  const isClue = entry.type === "clue";
+function EventRow({ entry }: { entry: EventEntry }) {
+  const isClue = entry.type === "examine_clue";
+  const isAccuseCorrect = entry.type === "accuse_correct";
+  const isAccuseWrong = entry.type === "accuse_wrong" || entry.type === "accuse_partial";
 
   return (
     <div
       className={[
         "py-1.5 px-2 rounded",
         isClue ? "bg-amber-950/40" : "",
+        isAccuseCorrect ? "bg-green-950/40" : "",
+        isAccuseWrong ? "bg-red-950/30" : "",
       ]
         .filter(Boolean)
         .join(" ")}
     >
-      <button
-        type="button"
-        onClick={() => hasDetail && setExpanded((v) => !v)}
-        className={[
-          "flex items-start gap-1.5 w-full text-left",
-          hasDetail ? "cursor-pointer" : "cursor-default",
-        ].join(" ")}
-        disabled={!hasDetail}
-        aria-expanded={hasDetail ? expanded : undefined}
-      >
-        <span className="shrink-0 text-xs leading-5">{ICONS[entry.type]}</span>
+      <div className="flex items-start gap-1.5">
+        <span className="shrink-0 text-xs leading-5">{entry.icon}</span>
         <span
           className={[
             "text-xs leading-5 flex-1",
             isClue
               ? "text-amber-400 font-medium"
-              : "text-neutral-300",
+              : isAccuseCorrect
+                ? "text-green-400 font-medium"
+                : isAccuseWrong
+                  ? "text-red-400"
+                  : "text-neutral-300",
           ].join(" ")}
         >
-          {entry.text}
+          {entry.description}
         </span>
-        {hasDetail && (
-          <span className="shrink-0 text-neutral-600 text-xs leading-5">
-            {expanded ? "▲" : "▼"}
-          </span>
-        )}
-      </button>
-
-      {expanded && entry.detail && (
-        <p className="mt-1 ml-5 text-xs text-neutral-500 leading-relaxed">
-          {entry.detail}
-        </p>
-      )}
+      </div>
     </div>
   );
 }
@@ -86,7 +55,7 @@ function EventRow({ entry }: EventRowProps) {
 // ---------------------------------------------------------------------------
 
 interface EventLogProps {
-  eventLog: LogEntry[];
+  eventLog: EventEntry[];
 }
 
 export function EventLog({ eventLog }: EventLogProps) {
