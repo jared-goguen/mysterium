@@ -1,219 +1,184 @@
 /**
  * reducer.ts — Pure state transitions
  *
- * The reducer takes the current state and an action (with its AI result)
- * and returns the next state. It never calls AI itself — that separation
- * is the caller's responsibility.
- *
- * Pattern: individual apply* functions for type safety,
- * plus a general `reduce` dispatcher for convenience.
+ * Four actions: FOCUS, INTERACT, SOLVE, GIVE_UP.
+ * Each has a typed apply* function + a general reduce() dispatcher.
  */
 
 import type { GameState, Conversation } from "../types/state";
 import type {
-  MoveAction,
-  ExamineAction,
-  ExamineResult,
-  TalkAction,
-  SayAction,
-  SayResult,
-  EndConversationAction,
-  EndConversationResult,
-  AccuseAction,
-  AccuseResult,
+  FocusAction,
+  FocusResult,
+  InteractAction,
+  InteractResult,
+  SolveAction,
+  SolveResult,
   GiveUpAction,
   GiveUpResult,
 } from "../types/actions";
 
 // ---------------------------------------------------------------------------
-// Individual reducers — fully typed
+// FOCUS — navigate to a location or character
 // ---------------------------------------------------------------------------
 
-/** MOVE: change focus to a location. */
-export function applyMove(state: GameState, action: MoveAction): GameState {
-  return {
-    ...state,
-    focus: { type: "location", id: action.locationId },
-  };
-}
-
-/** EXAMINE: log an exploration, potentially discovering a clue. */
-export function applyExamine(
+/**
+ * Apply a FOCUS action. Changes the current target.
+ * If the FocusResult includes a conversation summary (player was leaving
+ * a character), that's applied to state as well.
+ */
+export function applyFocus(
   state: GameState,
-  action: ExamineAction,
-  result: ExamineResult,
+  action: FocusAction,
+  result?: FocusResult,
 ): GameState {
-  return {
-    ...state,
-    explorations: [
-      ...state.explorations,
-      {
-        locationId: action.locationId,
-        query: action.query,
-        clueFound: result.clueFound,
-        narrative: result.narrative,
-        timestamp: Date.now(),
-      },
-    ],
-  };
+  let next = { ...state, focus: action.target };
+
+  // If leaving a character, apply conversation summary
+  if (result?.conversationEnded) {
+    const { characterId, summary, informationSpread, npcStateUpdates } =
+      result.conversationEnded;
+
+    // Add summary to conversation
+    const conversations = next.conversations.map((c) => {
+      if (c.characterId !== characterId) return c;
+      return { ...c, summaries: [...c.summaries, summary] };
+    });
+
+    // Update NPC states
+    const npcStates = { ...next.npcStates };
+
+    for (const [charId, newAwareness] of Object.entries(informationSpread)) {
+      const existing = npcStates[charId];
+      if (existing) {
+        npcStates[charId] = {
+          ...existing,
+          awareness: [...existing.awareness, ...newAwareness],
+        };
+      }
+    }
+
+    for (const [charId, newEmotion] of Object.entries(npcStateUpdates)) {
+      const existing = npcStates[charId];
+      if (existing) {
+        npcStates[charId] = { ...existing, emotion: newEmotion };
+      }
+    }
+
+    next = { ...next, conversations, npcStates };
+  }
+
+  // If focusing on a character, ensure a conversation exists
+  if (action.target.type === "character") {
+    const existing = next.conversations.find(
+      (c) => c.characterId === action.target.id,
+    );
+    if (!existing) {
+      next = {
+        ...next,
+        conversations: [
+          ...next.conversations,
+          {
+            characterId: action.target.id,
+            messages: [],
+            summaries: [],
+            startedAt: Date.now(),
+            lastMessageAt: Date.now(),
+          } satisfies Conversation,
+        ],
+      };
+    }
+  }
+
+  return next;
 }
 
-/** TALK: switch focus to a character, creating a conversation if needed. */
-export function applyTalk(state: GameState, action: TalkAction): GameState {
-  const existing = state.conversations.find(
-    (c) => c.characterId === action.characterId,
-  );
+// ---------------------------------------------------------------------------
+// INTERACT — context-dependent: examine (location) or speak (character)
+// ---------------------------------------------------------------------------
 
-  const conversations = existing
-    ? state.conversations
-    : [
-        ...state.conversations,
+export function applyInteract(
+  state: GameState,
+  action: InteractAction,
+  result: InteractResult,
+): GameState {
+  if (result.context === "location") {
+    // Examination
+    return {
+      ...state,
+      explorations: [
+        ...state.explorations,
         {
-          characterId: action.characterId,
-          messages: [],
-          summaries: [],
-          startedAt: Date.now(),
-          lastMessageAt: Date.now(),
-        } satisfies Conversation,
-      ];
-
-  return {
-    ...state,
-    focus: { type: "character", id: action.characterId },
-    conversations,
-  };
-}
-
-/** SAY: append player message + NPC response to the conversation. */
-export function applySay(
-  state: GameState,
-  action: SayAction,
-  result: SayResult,
-): GameState {
-  const now = Date.now();
-  const conversations = state.conversations.map((c) => {
-    if (c.characterId !== action.characterId) return c;
-    return {
-      ...c,
-      messages: [
-        ...c.messages,
-        { role: "player" as const, content: action.message, timestamp: now },
-        { role: "npc" as const, content: result.response, timestamp: now },
+          locationId: state.focus.id,
+          query: action.message,
+          clueFound: result.clueFound,
+          narrative: result.narrative,
+          timestamp: Date.now(),
+        },
       ],
-      lastMessageAt: now,
     };
-  });
-
-  // If testimonial clues were revealed, also add them to explorations
-  // so discoveredClueIds picks them up from conversations summaries.
-  // But testimonial clues from SAY are tracked via summaries in END_CONVERSATION.
-  // For now, we just update the conversation messages.
-
-  return { ...state, conversations };
+  } else {
+    // Conversation
+    const now = Date.now();
+    const conversations = state.conversations.map((c) => {
+      if (c.characterId !== state.focus.id) return c;
+      return {
+        ...c,
+        messages: [
+          ...c.messages,
+          { role: "player" as const, content: action.message, timestamp: now },
+          { role: "npc" as const, content: result.response, timestamp: now },
+        ],
+        lastMessageAt: now,
+      };
+    });
+    return { ...state, conversations };
+  }
 }
 
-/** END_CONVERSATION: add summary, spread information, update NPC states. */
-export function applyEndConversation(
+// ---------------------------------------------------------------------------
+// SOLVE — present timeline reconstruction
+// ---------------------------------------------------------------------------
+
+export function applySolve(
   state: GameState,
-  action: EndConversationAction,
-  result: EndConversationResult,
+  action: SolveAction,
+  result: SolveResult,
 ): GameState {
-  // Add the summary to the conversation
-  const conversations = state.conversations.map((c) => {
-    if (c.characterId !== action.characterId) return c;
-    return {
-      ...c,
-      summaries: [...c.summaries, result.summary],
-    };
-  });
-
-  // Update NPC states: merge information spread and emotional updates
-  const npcStates = { ...state.npcStates };
-
-  // Spread information to other NPCs
-  for (const [charId, newAwareness] of Object.entries(
-    result.informationSpread,
-  )) {
-    const existing = npcStates[charId];
-    if (existing) {
-      npcStates[charId] = {
-        ...existing,
-        awareness: [...existing.awareness, ...newAwareness],
-      };
-    }
-  }
-
-  // Apply emotional state updates
-  for (const [charId, newEmotion] of Object.entries(
-    result.npcStateUpdates,
-  )) {
-    const existing = npcStates[charId];
-    if (existing) {
-      npcStates[charId] = {
-        ...existing,
-        emotion: newEmotion,
-      };
-    }
-  }
-
-  // Switch focus back to the location where the character is
-  // (find the character's location from the mystery)
-  const characterLocation = state.mystery.locations.find((l) =>
-    l.charactersPresent.includes(action.characterId),
-  );
-  const focus = characterLocation
-    ? { type: "location" as const, id: characterLocation.id }
-    : state.focus;
-
-  return { ...state, conversations, npcStates, focus };
-}
-
-/** ACCUSE: log the accusation, apply consequences, maybe end the game. */
-export function applyAccuse(
-  state: GameState,
-  action: AccuseAction,
-  result: AccuseResult,
-): GameState {
-  const accusation = {
-    suspectId: action.suspectId,
-    motive: action.motive,
-    method: action.method,
+  const theory = {
+    answers: action.answers,
     evidenceCited: action.evidenceCited,
+    momentResults: result.momentResults,
+    score: result.score,
     outcome: result.outcome,
-    consequence: result.consequence,
+    narrative: result.narrative,
+    npcStateChanges: result.npcStateChanges,
+    gameOver: result.gameOver,
     timestamp: Date.now(),
   };
 
-  // Apply NPC state changes from consequences
+  // Apply NPC state changes
   const npcStates = { ...state.npcStates };
-  for (const [charId, newEmotion] of Object.entries(
-    result.consequence.npcStateChanges,
-  )) {
+  for (const [charId, newEmotion] of Object.entries(result.npcStateChanges)) {
     const existing = npcStates[charId];
     if (existing) {
-      npcStates[charId] = {
-        ...existing,
-        emotion: newEmotion,
-        // Reduce cooperativeness for the accused (if wrong)
-        cooperativeness:
-          charId === action.suspectId && result.outcome === "wrong"
-            ? Math.max(0, existing.cooperativeness - 40)
-            : existing.cooperativeness,
-      };
+      npcStates[charId] = { ...existing, emotion: newEmotion };
     }
   }
 
-  const phase = result.consequence.gameOver ? "solved" : state.phase;
+  const phase = result.gameOver ? "solved" : state.phase;
 
   return {
     ...state,
-    accusations: [...state.accusations, accusation],
+    theories: [...state.theories, theory],
     npcStates,
     phase,
   };
 }
 
-/** GIVE_UP: reveal the solution. */
+// ---------------------------------------------------------------------------
+// GIVE_UP — reveal the solution
+// ---------------------------------------------------------------------------
+
 export function applyGiveUp(
   state: GameState,
   _action: GiveUpAction,
@@ -223,52 +188,34 @@ export function applyGiveUp(
 }
 
 // ---------------------------------------------------------------------------
-// General dispatcher — routes to the right apply* function
+// General dispatcher
 // ---------------------------------------------------------------------------
 
-/**
- * Discriminated union of action + result pairs.
- * Type-safe: each action variant carries exactly the result it needs.
- */
 export type ReducerInput =
-  | { action: MoveAction }
-  | { action: ExamineAction; result: ExamineResult }
-  | { action: TalkAction }
-  | { action: SayAction; result: SayResult }
-  | { action: EndConversationAction; result: EndConversationResult }
-  | { action: AccuseAction; result: AccuseResult }
+  | { action: FocusAction; result?: FocusResult }
+  | { action: InteractAction; result: InteractResult }
+  | { action: SolveAction; result: SolveResult }
   | { action: GiveUpAction; result?: GiveUpResult };
 
-/** General dispatcher. Prefer individual apply* functions when the action type is known. */
 export function reduce(state: GameState, input: ReducerInput): GameState {
   switch (input.action.type) {
-    case "MOVE":
-      return applyMove(state, input.action);
-    case "EXAMINE":
-      return applyExamine(
+    case "FOCUS":
+      return applyFocus(
         state,
         input.action,
-        (input as { result: ExamineResult }).result,
+        (input as { result?: FocusResult }).result,
       );
-    case "TALK":
-      return applyTalk(state, input.action);
-    case "SAY":
-      return applySay(
+    case "INTERACT":
+      return applyInteract(
         state,
         input.action,
-        (input as { result: SayResult }).result,
+        (input as { result: InteractResult }).result,
       );
-    case "END_CONVERSATION":
-      return applyEndConversation(
+    case "SOLVE":
+      return applySolve(
         state,
         input.action,
-        (input as { result: EndConversationResult }).result,
-      );
-    case "ACCUSE":
-      return applyAccuse(
-        state,
-        input.action,
-        (input as { result: AccuseResult }).result,
+        (input as { result: SolveResult }).result,
       );
     case "GIVE_UP":
       return applyGiveUp(

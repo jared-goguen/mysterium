@@ -3,12 +3,9 @@ export { validateAction } from "./validators";
 export type { ValidationResult } from "./validators";
 export {
   reduce,
-  applyMove,
-  applyExamine,
-  applyTalk,
-  applySay,
-  applyEndConversation,
-  applyAccuse,
+  applyFocus,
+  applyInteract,
+  applySolve,
   applyGiveUp,
 } from "./reducer";
 export type { ReducerInput } from "./reducer";
