@@ -48,6 +48,8 @@ interface HookState {
   loading: boolean;
   /** Last error message, if any. */
   error: string | null;
+  /** Player message shown optimistically before API confirms. */
+  pendingMessage: string | null;
 }
 
 type HookAction =
@@ -56,14 +58,15 @@ type HookAction =
   | { type: "UPDATE_NOTES"; text: string }
   | { type: "SET_STREAMING"; text: string | null }
   | { type: "SET_LOADING"; loading: boolean }
-  | { type: "SET_ERROR"; error: string | null };
+  | { type: "SET_ERROR"; error: string | null }
+  | { type: "SET_PENDING_MESSAGE"; message: string | null };
 
 function hookReducer(state: HookState, action: HookAction): HookState {
   switch (action.type) {
     case "START_GAME":
-      return { game: createGameState(action.mystery), notes: "", streamingText: null, loading: false, error: null };
+      return { game: createGameState(action.mystery), notes: "", streamingText: null, loading: false, error: null, pendingMessage: null };
     case "SET_GAME":
-      return { ...state, game: action.game, error: null };
+      return { ...state, game: action.game, error: null, pendingMessage: null };
     case "UPDATE_NOTES":
       return { ...state, notes: action.text };
     case "SET_STREAMING":
@@ -71,7 +74,9 @@ function hookReducer(state: HookState, action: HookAction): HookState {
     case "SET_LOADING":
       return { ...state, loading: action.loading };
     case "SET_ERROR":
-      return { ...state, error: action.error, loading: false };
+      return { ...state, error: action.error, loading: false, pendingMessage: null };
+    case "SET_PENDING_MESSAGE":
+      return { ...state, pendingMessage: action.message };
   }
 }
 
@@ -86,7 +91,7 @@ function loadPersistedState(): HookState | null {
     const raw = sessionStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as { game: GameState | null; notes: string };
-      return { game: parsed.game, notes: parsed.notes, streamingText: null, loading: false, error: null };
+      return { game: parsed.game, notes: parsed.notes, streamingText: null, loading: false, error: null, pendingMessage: null };
     }
   } catch { /* start fresh */ }
   return null;
@@ -135,6 +140,8 @@ export interface GameStateHook {
   loading: boolean;
   /** Last error message. */
   error: string | null;
+  /** Player message shown optimistically before API confirms. */
+  pendingMessage: string | null;
 
   startGame: () => void;
   moveTo: (locationId: string) => void;
@@ -153,7 +160,7 @@ export interface GameStateHook {
 
 export function useGameState(): GameStateHook {
   const initial: HookState = loadPersistedState() ?? {
-    game: null, notes: "", streamingText: null, loading: false, error: null,
+    game: null, notes: "", streamingText: null, loading: false, error: null, pendingMessage: null,
   };
 
   const [state, dispatch] = useReducer(hookReducer, initial);
@@ -206,6 +213,7 @@ export function useGameState(): GameStateHook {
     if (!state.game || state.game.focus.type !== "character") return;
     const gameState = state.game;
 
+    dispatch({ type: "SET_PENDING_MESSAGE", message });
     dispatch({ type: "SET_LOADING", loading: true });
     dispatch({ type: "SET_STREAMING", text: "" });
 
@@ -368,6 +376,7 @@ export function useGameState(): GameStateHook {
     streamingText: state.streamingText,
     loading: state.loading,
     error: state.error,
+    pendingMessage: state.pendingMessage,
     startGame,
     moveTo,
     examine,

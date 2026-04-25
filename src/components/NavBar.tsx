@@ -18,6 +18,8 @@ interface NavBarProps {
   npcStates: Record<string, { emotion: string; cooperativeness: number }>;
   onMoveTo: (locationId: string) => void;
   onTalkTo: (characterId: string) => void;
+  onAccuse: () => void;
+  onGiveUp: () => void;
 }
 
 const genreBadgeColors: Record<string, string> = {
@@ -49,6 +51,8 @@ export function NavBar({
   npcStates,
   onMoveTo,
   onTalkTo,
+  onAccuse,
+  onGiveUp,
 }: NavBarProps) {
   const badgeColor = genreBadgeColors[mystery.genre] ?? "bg-neutral-700 text-neutral-300";
 
@@ -125,8 +129,17 @@ export function NavBar({
       {/* Spacer */}
       <div className="flex-1" />
 
+      {/* Give up */}
+      <button
+        onClick={onGiveUp}
+        className="text-xs text-neutral-600 transition-colors hover:text-neutral-400"
+      >
+        Give up
+      </button>
+
       {/* Accusation button */}
       <button
+        onClick={onAccuse}
         disabled={discoveredClues.length === 0}
         className={`rounded px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
           discoveredClues.length > 0

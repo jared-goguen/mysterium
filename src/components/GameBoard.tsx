@@ -1,24 +1,21 @@
 /**
  * GameBoard.tsx — Top-level game screen
  *
- * Three-panel flexbox layout:
- * - Left (w-72): Event log
- * - Center (flex-1): Main interaction panel
- * - Right (w-80): Notes panel
- *
- * Plus the NavBar fixed at the bottom.
+ * Three-panel flexbox layout + AccusationModal overlay.
  */
 
-import type { GameState } from "../../types/state";
+import { useState, useCallback } from "react";
+import type { GameState, AccusationOutcome } from "../../types/state";
 import type { Mystery, Clue } from "../../types/mystery";
 import type { EventEntry } from "../../lib/events";
 import { NavBar } from "./NavBar";
 import { MainPanel } from "./MainPanel";
 import { NotesPanel } from "./NotesPanel";
 import { EventLog } from "./EventLog";
+import { AccusationModal } from "./AccusationModal";
 
 /** Props accepted from either useMockGameState or useGameState. */
-interface GameBoardProps {
+export interface GameBoardProps {
   game: {
     gameState: GameState | null;
     mystery: Mystery | null;
@@ -36,12 +33,50 @@ interface GameBoardProps {
     talkTo: (characterId: string) => void;
     sendMessage: (characterId: string, message: string) => void;
     endConversation: () => void;
+    accuse: (suspectId: string, motive: string, method: string, evidenceCited: string[]) => void;
+    giveUp: () => void;
     updateNotes: (text: string) => void;
   };
 }
 
 export function GameBoard({ game }: GameBoardProps) {
   const { mystery, gameState } = game;
+
+  const [accusationOpen, setAccusationOpen] = useState(false);
+  const [accusationResult, setAccusationResult] = useState<{
+    outcome: AccusationOutcome;
+    narrative: string;
+    gameOver: boolean;
+  } | null>(null);
+
+  const handleAccuse = useCallback(
+    (suspectId: string, motive: string, method: string, evidenceCited: string[]) => {
+      game.accuse(suspectId, motive, method, evidenceCited);
+    },
+    [game.accuse],
+  );
+
+  // Watch for new accusations in state to capture the result
+  const lastAccusation = gameState?.accusations[gameState.accusations.length - 1];
+  const displayResult =
+    accusationOpen && lastAccusation && !accusationResult
+      ? {
+          outcome: lastAccusation.outcome,
+          narrative: lastAccusation.consequence.narrative,
+          gameOver: lastAccusation.consequence.gameOver,
+        }
+      : accusationResult;
+
+  // When modal opens, clear previous result
+  const openAccusation = useCallback(() => {
+    setAccusationResult(null);
+    setAccusationOpen(true);
+  }, []);
+
+  const closeAccusation = useCallback(() => {
+    setAccusationOpen(false);
+    setAccusationResult(null);
+  }, []);
 
   if (!mystery || !gameState) {
     return (
@@ -97,7 +132,21 @@ export function GameBoard({ game }: GameBoardProps) {
         npcStates={gameState.npcStates}
         onMoveTo={game.moveTo}
         onTalkTo={game.talkTo}
+        onAccuse={openAccusation}
+        onGiveUp={game.giveUp}
       />
+
+      {/* Accusation modal */}
+      {accusationOpen && (
+        <AccusationModal
+          characters={mystery.characters}
+          discoveredClues={game.discoveredClues}
+          loading={game.loading}
+          onAccuse={handleAccuse}
+          onClose={closeAccusation}
+          lastResult={displayResult}
+        />
+      )}
     </div>
   );
 }
