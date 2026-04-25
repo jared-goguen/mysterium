@@ -1,124 +1,132 @@
 /**
  * actions.ts — State Transitions
  *
- * Every player action is one of these. Each defines:
- *   - what the player did
- *   - what context the AI engine needs
- *   - what the resulting state change looks like
+ * Four player actions:
+ *   FOCUS    — navigate to a location or character
+ *   INTERACT — context-dependent: examine (location) or speak (character)
+ *   SOLVE    — present timeline reconstruction
+ *   GIVE_UP  — reveal the full solution
  *
- * The game loop: player action → AI engine → state transition → UI update.
+ * The game loop: action → AI engine → typed result → reducer → new state.
  */
 
-import type { AccusationConsequence, AccusationOutcome, ConversationSummary } from "./state";
+import type { ConversationSummary, MomentResult, TheoryOutcome } from "./state";
+
+// ---------------------------------------------------------------------------
+// Focus target
+// ---------------------------------------------------------------------------
+
+export type FocusTargetType = "location" | "character";
+
+export interface FocusTarget {
+  type: FocusTargetType;
+  id: string;
+}
 
 // ---------------------------------------------------------------------------
 // Actions — what the player does
 // ---------------------------------------------------------------------------
 
-/** Player moves to a location. Triggers an implicit "look around". */
-export interface MoveAction {
-  type: "MOVE";
-  locationId: string;
+/**
+ * Navigate to a location or character.
+ *
+ * Side-effect: if leaving a character with messages, the game loop
+ * should trigger conversation summarization before applying the focus change.
+ */
+export interface FocusAction {
+  type: "FOCUS";
+  target: FocusTarget;
 }
 
 /**
- * Player examines something at the current location.
- * Freeform text — "look at the desk", "check under the rug".
+ * Interact with the current focus target. Context-dependent:
+ *   - Focused on a location → examine (freeform query)
+ *   - Focused on a character → say something (conversation)
  */
-export interface ExamineAction {
-  type: "EXAMINE";
-  locationId: string;
-  query: string;
-}
-
-/** Player says something to the current NPC. */
-export interface SayAction {
-  type: "SAY";
-  characterId: string;
+export interface InteractAction {
+  type: "INTERACT";
   message: string;
 }
 
-/**
- * Player ends the current conversation.
- * Triggers AI summarization and information spread.
- */
-export interface EndConversationAction {
-  type: "END_CONVERSATION";
-  characterId: string;
-}
-
-/** Player starts talking to a character. */
-export interface TalkAction {
-  type: "TALK";
-  characterId: string;
-}
-
-/** Player presents their accusation. */
-export interface AccuseAction {
-  type: "ACCUSE";
-  suspectId: string;
-  /** Player's theory of motive — free text. */
-  motive: string;
-  /** Player's theory of method — free text. */
-  method: string;
+/** Present a timeline reconstruction — the player's theory of what happened. */
+export interface SolveAction {
+  type: "SOLVE";
+  /** Player's freeform answer for each gap, keyed by moment ID. */
+  answers: Record<string, string>;
   /** Clue IDs the player is citing as evidence. */
   evidenceCited: string[];
 }
 
-/** Player gives up — reveal the solution. */
+/** Give up — reveal the full solution. */
 export interface GiveUpAction {
   type: "GIVE_UP";
 }
 
 export type Action =
-  | MoveAction
-  | ExamineAction
-  | SayAction
-  | EndConversationAction
-  | TalkAction
-  | AccuseAction
+  | FocusAction
+  | InteractAction
+  | SolveAction
   | GiveUpAction;
 
 // ---------------------------------------------------------------------------
 // Results — what the AI engine returns
 // ---------------------------------------------------------------------------
 
-/** Result of an EXAMINE action. */
-export interface ExamineResult {
-  /** The AI's atmospheric narrative of what was found. */
+/**
+ * Result of a FOCUS action.
+ * If the player was talking to a character, the conversation
+ * is summarized and information spreads to other NPCs.
+ */
+export interface FocusResult {
+  /** Present only if leaving a character with messages. */
+  conversationEnded?: {
+    characterId: string;
+    summary: ConversationSummary;
+    informationSpread: Record<string, string[]>;
+    npcStateUpdates: Record<string, string>;
+  };
+}
+
+/**
+ * Result of an INTERACT action — shape depends on focus context.
+ * The `context` discriminant tells the reducer which branch to apply.
+ */
+export type InteractResult =
+  | ExamineInteractResult
+  | SpeakInteractResult;
+
+/** INTERACT at a location: examination. */
+export interface ExamineInteractResult {
+  context: "location";
+  /** Atmospheric narrative of what was found. */
   narrative: string;
-  /** If a clue was discovered, its ID. */
+  /** Clue ID if an undiscovered clue was found, null otherwise. */
   clueFound: string | null;
 }
 
-/** Result of a SAY action — the NPC's response. */
-export interface SayResult {
+/** INTERACT with a character: conversation. */
+export interface SpeakInteractResult {
+  context: "character";
   /** The NPC's in-character response. */
   response: string;
-  /**
-   * Clue IDs revealed through this exchange, if any.
-   * Testimonial clues emerge during conversation.
-   */
+  /** Clue IDs revealed through this exchange. */
   cluesRevealed: string[];
 }
 
-/** Result of an END_CONVERSATION action. */
-export interface EndConversationResult {
-  /** Compressed summary of the conversation. */
-  summary: ConversationSummary;
-  /**
-   * Information spread to other NPCs.
-   * Map of characterId → what they now know about.
-   */
-  informationSpread: Record<string, string[]>;
-  /** Updated NPC emotional states after information spreads. */
-  npcStateUpdates: Record<string, string>;
-}
-
-/** Result of an ACCUSE action. */
-export interface AccuseResult {
-  outcome: AccusationOutcome;
-  consequence: AccusationConsequence;
+/** Result of a SOLVE action — per-moment evaluation. */
+export interface SolveResult {
+  /** Per-moment feedback. */
+  momentResults: MomentResult[];
+  /** Weighted overall score (0–1). */
+  score: number;
+  /** Overall outcome. */
+  outcome: TheoryOutcome;
+  /** Narrative consequence. */
+  narrative: string;
+  /** NPC state changes. */
+  npcStateChanges: Record<string, string>;
+  /** True if score crosses the solve threshold. */
+  gameOver: boolean;
 }
 
 /** Result of a GIVE_UP action. */

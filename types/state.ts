@@ -7,6 +7,8 @@
  */
 
 import type { Mystery, Clue } from "./mystery";
+// FocusTarget is defined in actions.ts and re-exported below
+import type { FocusTarget } from "./actions";
 
 // ---------------------------------------------------------------------------
 // Exploration log
@@ -68,37 +70,41 @@ export interface Conversation {
 }
 
 // ---------------------------------------------------------------------------
-// Accusation log
+// Theory log (timeline reconstruction attempts)
 // ---------------------------------------------------------------------------
 
-export type AccusationOutcome = "correct" | "partial" | "wrong";
+/** How close the player's reconstruction was to the truth. */
+export type TheoryOutcome = "solved" | "close" | "wrong";
 
-/**
- * How the world changes after an accusation.
- * These are specific, actionable state changes — not just narrative.
- */
-export interface AccusationConsequence {
-  /** Human-readable narrative of what happened. */
-  narrative: string;
-  /** NPC emotional state changes: characterId → new emotion. */
-  npcStateChanges: Record<string, string>;
-  /** Secrets revealed as a result (character IDs whose secrets came out). */
-  secretsRevealed: string[];
-  /** Whether the game is over (true only on correct accusation). */
-  gameOver: boolean;
+/** Per-moment evaluation from the AI judge. */
+export interface MomentResult {
+  momentId: string;
+  /** 0–1 score for this moment. */
+  score: number;
+  /** Feedback: "Correct — Dolores entered via the back stairs" or hints. */
+  feedback: string;
 }
 
-export interface Accusation {
-  /** Who the player accused. */
-  suspectId: string;
-  /** Player's theory of why they did it. */
-  motive: string;
-  /** Player's theory of how they did it. */
-  method: string;
+/**
+ * A player's attempt to reconstruct the timeline.
+ * Includes the AI's per-moment evaluation and overall score.
+ */
+export interface Theory {
+  /** Player's freeform answer for each gap, keyed by moment ID. */
+  answers: Record<string, string>;
   /** Clue IDs the player cited as evidence. */
   evidenceCited: string[];
-  outcome: AccusationOutcome;
-  consequence: AccusationConsequence;
+  /** Per-moment evaluation. */
+  momentResults: MomentResult[];
+  /** Weighted overall score (0–1). */
+  score: number;
+  outcome: TheoryOutcome;
+  /** Narrative consequence from the AI. */
+  narrative: string;
+  /** NPC emotional state changes. */
+  npcStateChanges: Record<string, string>;
+  /** Whether the mystery is solved (score ≥ threshold). */
+  gameOver: boolean;
   timestamp: number;
 }
 
@@ -108,7 +114,7 @@ export interface Accusation {
 
 /**
  * The current state of an NPC as perceived by the player.
- * Updated after conversations and accusations.
+ * Updated after conversations and theory attempts.
  * Fed into future NPC interactions as context.
  */
 export interface NPCState {
@@ -125,13 +131,8 @@ export interface NPCState {
 // Focus — where the player is right now
 // ---------------------------------------------------------------------------
 
-export type FocusType = "location" | "character";
-
-export interface Focus {
-  type: FocusType;
-  /** Location ID or Character ID depending on focus type. */
-  id: string;
-}
+// Re-export from actions.ts for convenience
+export type { FocusTarget, FocusTargetType } from "./actions";
 
 // ---------------------------------------------------------------------------
 // Game phase
@@ -158,7 +159,7 @@ export interface GameState {
 
   explorations: Exploration[];
   conversations: Conversation[];
-  accusations: Accusation[];
+  theories: Theory[];
 
   // -- Cached AI-derived state --
 
@@ -167,7 +168,7 @@ export interface GameState {
 
   // -- Player position --
 
-  focus: Focus;
+  focus: FocusTarget;
 
   /** When the game started. */
   startedAt: number;
@@ -216,9 +217,9 @@ export function investigationProgress(state: GameState): number {
   return discoveredClueIds(state).size / total;
 }
 
-/** Number of wrong accusations made. */
-export function failedAccusationCount(state: GameState): number {
-  return state.accusations.filter((a) => a.outcome !== "correct").length;
+/** Number of failed theory attempts. */
+export function failedTheoryCount(state: GameState): number {
+  return state.theories.filter((t) => t.outcome !== "solved").length;
 }
 
 /** Get the conversation for a specific character, if any. */

@@ -204,7 +204,7 @@ export interface RedHerring {
 }
 
 // ---------------------------------------------------------------------------
-// Solution
+// Solution — timeline-based
 // ---------------------------------------------------------------------------
 
 /** One link in the evidence chain that proves the solution. */
@@ -217,19 +217,56 @@ export interface EvidenceLink {
   whatItProves: string;
 }
 
+/** A category for solution questions / timeline moments. */
+export type MomentCategory = "who" | "what" | "how" | "why" | "where" | "when";
+
+/**
+ * A single moment in the solution timeline.
+ * Known moments provide context. Gaps are the puzzle the player fills in.
+ */
+export interface SolutionMoment {
+  id: string;
+  /** When this moment occurs: "10:40 PM". */
+  time: string;
+  /** True = shown to the player for context. False = the player must reconstruct. */
+  isKnown: boolean;
+
+  /** For known moments, the description shown to the player. */
+  knownDescription?: string;
+  /** For gaps, a prompt guiding what the player needs to figure out. */
+  prompt?: string;
+
+  /** The ground truth (hidden from the player until evaluated). */
+  truth: {
+    location: string;
+    people: string[];
+    description: string;
+  };
+
+  /** Clue IDs that help reconstruct this moment. */
+  supportingClues: string[];
+
+  /**
+   * How important this moment is to the overall solution (0–1).
+   * Weights across all gaps should sum to ~1.
+   */
+  weight: number;
+}
+
 export interface Solution {
-  /** Character ID of the guilty party. */
-  culprit: string;
-  /** Why they did it. */
-  motive: string;
-  /** How they did it. */
-  method: string;
-  /** When/where they had the chance. */
-  opportunity: string;
+  /** The full narrative truth — revealed on solve or give-up. */
+  truth: string;
+
+  /**
+   * The timeline: known moments (context) + gaps (the puzzle).
+   * Ordered chronologically.
+   */
+  moments: SolutionMoment[];
+
   /**
    * The ordered evidence chain.
    * If a player finds ALL clues in this chain, they can
-   * logically deduce the culprit with certainty.
+   * logically reconstruct the full timeline.
    */
   evidenceChain: EvidenceLink[];
 }
