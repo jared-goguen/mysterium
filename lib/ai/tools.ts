@@ -117,47 +117,71 @@ export const SUMMARIZE_TOOL: Tool = {
   },
 };
 
-/** Judge: evaluate a player's accusation against the ground truth. */
-export const EVALUATE_ACCUSATION_TOOL: Tool = {
-  name: "evaluate_accusation",
+/** Judge: evaluate a player's timeline reconstruction. */
+export const EVALUATE_SOLUTION_TOOL: Tool = {
+  name: "evaluate_solution",
   description:
-    "Evaluate the player's accusation against the ground truth and generate dramatic consequences.",
+    "Evaluate the player's timeline reconstruction against the ground truth and generate consequences.",
   input_schema: {
     type: "object" as const,
     properties: {
+      momentResults: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            momentId: {
+              type: "string",
+              description: "The moment ID being evaluated.",
+            },
+            score: {
+              type: "number",
+              description:
+                "0.0 to 1.0 score for this moment based on accuracy.",
+            },
+            feedback: {
+              type: "string",
+              description:
+                "Brief feedback for this moment (what was right/wrong).",
+            },
+          },
+          required: ["momentId", "score", "feedback"],
+        },
+        description: "Per-moment evaluation results. One entry per gap.",
+      },
+      score: {
+        type: "number",
+        description:
+          "Overall weighted score (0.0–1.0). Computed from moment scores × weights.",
+      },
       outcome: {
         type: "string",
-        enum: ["correct", "partial", "wrong"],
+        enum: ["solved", "close", "wrong"],
         description:
-          "correct = right suspect + substantially right theory. partial = right suspect, wrong theory. wrong = wrong suspect.",
+          "solved = score ≥ 0.75. close = 0.4–0.75. wrong = < 0.4.",
       },
       narrative: {
         type: "string",
         description:
-          "Dramatic narrative of the consequence. 2-4 paragraphs, genre-appropriate.",
+          "Dramatic narrative consequence. 2-4 paragraphs, genre-appropriate.",
       },
       npcStateChanges: {
         type: "object",
         additionalProperties: { type: "string" },
         description:
-          "Map of characterId → new emotional state after the accusation.",
-      },
-      secretsRevealed: {
-        type: "array",
-        items: { type: "string" },
-        description:
-          "Character IDs whose secrets were revealed as a consequence of this accusation.",
+          "Map of characterId → new emotional state after the theory is presented.",
       },
       gameOver: {
         type: "boolean",
-        description: "True only if the accusation was correct.",
+        description: "True only when outcome is 'solved'.",
       },
     },
     required: [
+      "momentResults",
+      "score",
       "outcome",
       "narrative",
       "npcStateChanges",
-      "secretsRevealed",
       "gameOver",
     ],
   },

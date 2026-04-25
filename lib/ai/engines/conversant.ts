@@ -9,7 +9,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { GameState } from "../../../types/state";
 import { getConversation } from "../../../types/state";
-import type { SayAction, SayResult } from "../../../types/actions";
+import type { InteractAction, SpeakInteractResult } from "../../../types/actions";
 import { streamChat, callTool } from "../client";
 import { DETECT_CLUES_TOOL } from "../tools";
 import { characterContext } from "../context";
@@ -20,20 +20,15 @@ interface ClueDetectionResult {
   cluesRevealed: string[];
 }
 
-/**
- * Process a player message to an NPC.
- *
- * @param onDelta - Callback for streaming text chunks to the client.
- * @returns The complete SayResult after both phases finish.
- */
 export async function converse(
   client: Anthropic,
   state: GameState,
-  action: SayAction,
+  action: InteractAction,
   onDelta?: (text: string) => void,
-): Promise<SayResult> {
-  const ctx = characterContext(state.mystery, state, action.characterId);
-  const conversation = getConversation(state, action.characterId);
+): Promise<SpeakInteractResult> {
+  const characterId = state.focus.id;
+  const ctx = characterContext(state.mystery, state, characterId);
+  const conversation = getConversation(state, characterId);
 
   // Phase 1: Stream the NPC response
   const { system, messages } = buildConversationPrompt(
@@ -50,7 +45,7 @@ export async function converse(
     "quality",
   );
 
-  // Phase 2: Check for revealed clues (skip if no testimonial clues available)
+  // Phase 2: Check for revealed clues
   let cluesRevealed: string[] = [];
 
   if (ctx.availableTestimonialClues.length > 0) {
@@ -69,7 +64,6 @@ export async function converse(
       "fast",
     );
 
-    // Validate: only keep clue IDs that actually exist and are available
     const availableIds = new Set(
       ctx.availableTestimonialClues.map((c) => c.id),
     );
@@ -82,5 +76,5 @@ export async function converse(
     });
   }
 
-  return { response, cluesRevealed };
+  return { context: "character", response, cluesRevealed };
 }

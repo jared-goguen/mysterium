@@ -7,7 +7,7 @@
 
 import type Anthropic from "@anthropic-ai/sdk";
 import type { GameState } from "../../../types/state";
-import type { ExamineAction, ExamineResult } from "../../../types/actions";
+import type { InteractAction, ExamineInteractResult } from "../../../types/actions";
 import { callTool } from "../client";
 import { EXAMINE_TOOL } from "../tools";
 import { locationContext } from "../context";
@@ -22,10 +22,10 @@ interface ExamineToolResult {
 export async function examine(
   client: Anthropic,
   state: GameState,
-  action: ExamineAction,
-): Promise<ExamineResult> {
-  const ctx = locationContext(state.mystery, state, action.locationId);
-  const { system, userMessage } = buildExaminePrompt(ctx, action.query);
+  action: InteractAction,
+): Promise<ExamineInteractResult> {
+  const ctx = locationContext(state.mystery, state, state.focus.id);
+  const { system, userMessage } = buildExaminePrompt(ctx, action.message);
 
   const raw = await callTool<ExamineToolResult>(
     client,
@@ -34,7 +34,6 @@ export async function examine(
     EXAMINE_TOOL,
   );
 
-  // Validate: if a clue was returned, make sure it actually exists
   let clueFound = raw.clueFound;
   if (clueFound) {
     const exists = state.mystery.clues.some((c) => c.id === clueFound);
@@ -45,6 +44,7 @@ export async function examine(
   }
 
   return {
+    context: "location",
     narrative: raw.narrative,
     clueFound,
   };

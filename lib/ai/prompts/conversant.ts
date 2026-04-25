@@ -27,7 +27,7 @@ export function buildConversationPrompt(
     previousSummaries,
     discoveredClueDescriptions,
     otherInterviewees,
-    accusationHistory,
+    theoryHistory,
     otherCharacters,
   } = ctx;
 
@@ -54,8 +54,8 @@ You'll reveal your secret if: ${character.secret.revealTrigger}`;
       : "";
 
   const accusationNote =
-    accusationHistory.length > 0
-      ? `\nPrevious accusations: ${accusationHistory.join("; ")}`
+    theoryHistory.length > 0
+      ? `\nPrevious theory attempts: ${theoryHistory.join("; ")}`
       : "";
 
   const summaryNote =

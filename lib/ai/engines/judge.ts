@@ -1,31 +1,26 @@
 /**
- * judge.ts — Accusation evaluation and give-up engine
- *
- * Evaluates player accusations against the ground truth,
- * generates dramatic consequences. Also handles give-up reveals.
+ * judge.ts — Timeline evaluation and give-up engine
  */
 
 import type Anthropic from "@anthropic-ai/sdk";
 import type { GameState } from "../../../types/state";
 import type {
-  AccuseAction,
-  AccuseResult,
+  SolveAction,
+  SolveResult,
   GiveUpResult,
 } from "../../../types/actions";
-import type { AccusationConsequence } from "../../../types/state";
+import type { MomentResult } from "../../../types/state";
 import { callTool } from "../client";
-import { EVALUATE_ACCUSATION_TOOL, GIVE_UP_TOOL } from "../tools";
-import { accusationContext } from "../context";
-import {
-  buildAccusationPrompt,
-  buildGiveUpPrompt,
-} from "../prompts/judge";
+import { EVALUATE_SOLUTION_TOOL, GIVE_UP_TOOL } from "../tools";
+import { solutionContext } from "../context";
+import { buildSolvePrompt, buildGiveUpPrompt } from "../prompts/judge";
 
-interface AccusationToolResult {
-  outcome: "correct" | "partial" | "wrong";
+interface SolveToolResult {
+  momentResults: { momentId: string; score: number; feedback: string }[];
+  score: number;
+  outcome: "solved" | "close" | "wrong";
   narrative: string;
   npcStateChanges: Record<string, string>;
-  secretsRevealed: string[];
   gameOver: boolean;
 }
 
@@ -36,48 +31,55 @@ interface GiveUpToolResult {
 export async function evaluate(
   client: Anthropic,
   state: GameState,
-  action: AccuseAction,
-): Promise<AccuseResult> {
-  const ctx = accusationContext(state.mystery, state);
-  const { system, userMessage } = buildAccusationPrompt(ctx, action);
+  action: SolveAction,
+): Promise<SolveResult> {
+  const ctx = solutionContext(state.mystery, state);
+  const { system, userMessage } = buildSolvePrompt(ctx, action);
 
-  const raw = await callTool<AccusationToolResult>(
+  const raw = await callTool<SolveToolResult>(
     client,
     system,
     [{ role: "user", content: userMessage }],
-    EVALUATE_ACCUSATION_TOOL,
+    EVALUATE_SOLUTION_TOOL,
     "quality",
   );
 
-  // Validate outcome enum
-  const validOutcomes = ["correct", "partial", "wrong"] as const;
+  // Validate outcome
+  const validOutcomes = ["solved", "close", "wrong"] as const;
   const outcome = validOutcomes.includes(raw.outcome as any)
     ? raw.outcome
     : "wrong";
 
-  // Validate character IDs in state changes and secrets
+  // Validate moment IDs
+  const validMomentIds = new Set(
+    state.mystery.solution.moments.filter((m) => !m.isKnown).map((m) => m.id),
+  );
+  const momentResults: MomentResult[] = raw.momentResults
+    .filter((r) => validMomentIds.has(r.momentId))
+    .map((r) => ({
+      momentId: r.momentId,
+      score: Math.max(0, Math.min(1, r.score)),
+      feedback: r.feedback,
+    }));
+
+  // Validate character IDs in npcStateChanges
   const validCharIds = new Set(state.mystery.characters.map((c) => c.id));
   const npcStateChanges: Record<string, string> = {};
   for (const [charId, emotion] of Object.entries(raw.npcStateChanges)) {
-    if (validCharIds.has(charId)) {
-      npcStateChanges[charId] = emotion;
-    }
+    if (validCharIds.has(charId)) npcStateChanges[charId] = emotion;
   }
-  const secretsRevealed = raw.secretsRevealed.filter((id) =>
-    validCharIds.has(id),
-  );
 
-  // Enforce: gameOver is true ONLY for correct outcomes
-  const gameOver = outcome === "correct";
+  // Enforce: gameOver only for solved
+  const gameOver = outcome === "solved";
 
-  const consequence: AccusationConsequence = {
+  return {
+    momentResults,
+    score: Math.max(0, Math.min(1, raw.score)),
+    outcome,
     narrative: raw.narrative,
     npcStateChanges,
-    secretsRevealed,
     gameOver,
   };
-
-  return { outcome, consequence };
 }
 
 export async function giveUp(

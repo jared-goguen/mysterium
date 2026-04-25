@@ -1,29 +1,21 @@
 /**
- * judge.ts — Prompt builder for accusation evaluation and give-up
+ * judge.ts — Prompt builders for timeline evaluation and give-up
  */
 
-import type { AccusationContext } from "../context";
+import type { SolutionContext } from "../context";
 import type { Mystery } from "../../../types/mystery";
-import type { AccuseAction } from "../../../types/actions";
+import type { SolveAction } from "../../../types/actions";
 
-export interface AccusationPrompt {
+export interface SolvePrompt {
   system: string;
   userMessage: string;
 }
 
-export function buildAccusationPrompt(
-  ctx: AccusationContext,
-  accusation: AccuseAction,
-): AccusationPrompt {
-  const { solution, genre, characters, priorFailures, discoveredClueDescriptions } =
-    ctx;
-
-  const culpritName =
-    characters.find((c) => c.id === solution.culprit)?.name ??
-    solution.culprit;
-  const accusedName =
-    characters.find((c) => c.id === accusation.suspectId)?.name ??
-    accusation.suspectId;
+export function buildSolvePrompt(
+  ctx: SolutionContext,
+  action: SolveAction,
+): SolvePrompt {
+  const { solution, genre, characters, priorFailures, discoveredClueDescriptions } = ctx;
 
   const characterList = characters
     .map((c) => `- ${c.name} (${c.id}): ${c.personality}`)
@@ -34,41 +26,62 @@ export function buildAccusationPrompt(
       ? discoveredClueDescriptions.map((d) => `- ${d}`).join("\n")
       : "No clues discovered";
 
-  const system = `You are the game engine for a ${genre} mystery. Evaluate the player's accusation against the ground truth and generate dramatic consequences.
+  // Build the moments section: known moments for context, gaps with ground truth + player answers
+  const momentsSection = solution.moments
+    .map((m) => {
+      if (m.isKnown) {
+        return `[KNOWN] ${m.time} — ${m.knownDescription}`;
+      }
+      const playerAnswer = action.answers[m.id] ?? "(no answer provided)";
+      return [
+        `[GAP] ${m.time} — "${m.prompt}"`,
+        `  GROUND TRUTH: Location: ${m.truth.location}, People: ${m.truth.people.join(", ") || "none"}, Description: ${m.truth.description}`,
+        `  PLAYER'S ANSWER: "${playerAnswer}"`,
+        `  WEIGHT: ${m.weight}`,
+      ].join("\n");
+    })
+    .join("\n\n");
 
-GROUND TRUTH:
-- Culprit: ${culpritName} (${solution.culprit})
-- Motive: ${solution.motive}
-- Method: ${solution.method}
-- Opportunity: ${solution.opportunity}
+  const gapIds = solution.moments.filter((m) => !m.isKnown).map((m) => m.id);
+
+  const system = `You are the game engine for a ${genre} mystery. Evaluate the player's timeline reconstruction.
+
+THE TIMELINE (known moments for context, gaps with ground truth and player answers):
+
+${momentsSection}
 
 ALL CHARACTERS:
 ${characterList}
 
-CLUES THE INVESTIGATOR HAS FOUND:
+CLUES THE PLAYER HAS FOUND:
 ${clueList}
 
-PREVIOUS WRONG ACCUSATIONS: ${priorFailures}
+PREVIOUS FAILED THEORIES: ${priorFailures}
 
 EVALUATION RULES:
-- CORRECT: The accused IS the culprit AND the stated motive/method are substantially correct (doesn't need to be word-perfect, just captures the essential truth).
-- PARTIAL: The accused IS the culprit BUT the motive or method is significantly wrong.
-- WRONG: The accused is NOT the culprit.
+For each GAP, score the player's answer 0.0 to 1.0:
+- 1.0: Correct on key facts (right people, right location, right action)
+- 0.7-0.9: Mostly correct, minor details wrong or missing
+- 0.4-0.6: Partially correct — got some elements right
+- 0.1-0.3: On the wrong track but shows some understanding
+- 0.0: Completely wrong or no answer
+
+Consider:
+- Did the player identify the right people at this moment?
+- Did they understand what happened?
+- Is their answer consistent with discoverable evidence?
 
 NARRATIVE RULES:
-- If CORRECT: Write a dramatic reveal scene. Show how the evidence locks together. Describe the culprit's reaction. 3-4 paragraphs, genre-appropriate.
-- If PARTIAL: Acknowledge they found the right person but reveal the real motive/method. 2-3 paragraphs.
-- If WRONG: Write the accused character's reaction IN CHARACTER based on their personality. Describe how other suspects react. The guilty party should become subtly [more careful or more emboldened]. 2-3 paragraphs.
+- If overall score ≥ 0.75 (solved): Write a dramatic reveal confirming the player's reconstruction. Show how the pieces fit together. 3-4 paragraphs, genre-appropriate.
+- If overall score 0.4–0.75 (close): Acknowledge what they got right, hint at what they missed. Encourage continued investigation. 2-3 paragraphs.
+- If overall score < 0.4 (wrong): The theory doesn't hold up. NPCs react skeptically. Suggest the player needs more evidence. 2-3 paragraphs.
 
-For npcStateChanges: Every character should have an emotional reaction to the accusation.
-For secretsRevealed: If a wrong accusation pushes an innocent suspect to break down and reveal their secret, include their ID.
-gameOver is true ONLY for "correct" outcomes.`;
+For npcStateChanges: characters react emotionally to the theory being presented.
+gameOver is true ONLY when overall score ≥ 0.75.
 
-  const userMessage = `THE PLAYER'S ACCUSATION:
-- Accused: ${accusedName} (${accusation.suspectId})
-- Claimed motive: ${accusation.motive}
-- Claimed method: ${accusation.method}
-- Evidence cited: ${accusation.evidenceCited.length > 0 ? accusation.evidenceCited.join(", ") : "none"}`;
+You MUST evaluate every gap: ${gapIds.join(", ")}`;
+
+  const userMessage = `Evaluate the player's timeline reconstruction. Respond using the evaluate_solution tool.`;
 
   return { system, userMessage };
 }
@@ -81,28 +94,26 @@ export interface GiveUpPrompt {
 export function buildGiveUpPrompt(mystery: Mystery): GiveUpPrompt {
   const { solution, genre, characters } = mystery;
 
-  const culpritName =
-    characters.find((c) => c.id === solution.culprit)?.name ??
-    solution.culprit;
-
   const secretsList = characters
-    .map(
-      (c) => `- ${c.name}: ${c.secret.description}`,
-    )
+    .map((c) => `- ${c.name}: ${c.secret.description}`)
+    .join("\n");
+
+  const timelineSummary = solution.moments
+    .map((m) => `${m.time}: ${m.truth.description}`)
     .join("\n");
 
   const system = `You are the narrator of a ${genre} mystery. The player has given up. Reveal the complete solution as a dramatic epilogue.
 
-SOLUTION:
-- Culprit: ${culpritName}
-- Motive: ${solution.motive}
-- Method: ${solution.method}
-- Opportunity: ${solution.opportunity}
+THE FULL TRUTH:
+${solution.truth}
+
+THE COMPLETE TIMELINE:
+${timelineSummary}
 
 EVERYONE'S SECRETS:
 ${secretsList}
 
-Write a 4-6 paragraph narrative epilogue revealing everything: who did it, how, why, and what every suspect was really hiding. Genre-appropriate tone. Make it feel like the final chapter of a mystery novel — satisfying even in defeat.`;
+Write a 4-6 paragraph narrative epilogue revealing everything: the full timeline of events and what every suspect was really hiding. Genre-appropriate tone. Make it feel like the final chapter of a mystery novel — satisfying even in defeat.`;
 
   const userMessage = "The investigator has given up. Reveal the truth.";
 

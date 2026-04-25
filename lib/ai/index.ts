@@ -7,7 +7,7 @@ export {
   EXAMINE_TOOL,
   DETECT_CLUES_TOOL,
   SUMMARIZE_TOOL,
-  EVALUATE_ACCUSATION_TOOL,
+  EVALUATE_SOLUTION_TOOL,
   GIVE_UP_TOOL,
 } from "./tools";
 
@@ -16,13 +16,13 @@ export {
   locationContext,
   characterContext,
   conversationContext,
-  accusationContext,
+  solutionContext,
 } from "./context";
 export type {
   LocationContext,
   CharacterContext,
   ConversationContext,
-  AccusationContext,
+  SolutionContext,
 } from "./context";
 
 // Engines

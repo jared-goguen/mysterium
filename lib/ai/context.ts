@@ -62,8 +62,8 @@ export interface CharacterContext {
   discoveredClueDescriptions: string[];
   /** Names of other suspects the player has talked to. */
   otherInterviewees: string[];
-  /** Past accusation summaries. */
-  accusationHistory: string[];
+  /** Past theory attempt summaries. */
+  theoryHistory: string[];
   /** Other character names + brief descriptions for relationship context. */
   otherCharacters: { id: string; name: string; brief: string }[];
   /** Testimonial clues this character could reveal (not yet discovered). */
@@ -114,9 +114,9 @@ export function characterContext(
         );
         return char?.name ?? c.characterId;
       }),
-    accusationHistory: state.accusations.map(
-      (a) =>
-        `Accused ${mystery.characters.find((c) => c.id === a.suspectId)?.name ?? a.suspectId}: ${a.outcome}`,
+    theoryHistory: state.theories.map(
+      (t) =>
+        `Theory attempt: ${t.outcome} (${Math.round(t.score * 100)}%)`,
     ),
     otherCharacters: mystery.characters
       .filter((c) => c.id !== characterId)
@@ -174,23 +174,23 @@ export function conversationContext(
 }
 
 // ---------------------------------------------------------------------------
-// Accusation context (for Judge)
+// Solution context (for Judge — timeline evaluation)
 // ---------------------------------------------------------------------------
 
-export interface AccusationContext {
+export interface SolutionContext {
   solution: Mystery["solution"];
   genre: string;
   characters: { id: string; name: string; personality: string }[];
-  /** How many wrong accusations so far. */
+  /** How many failed theories so far. */
   priorFailures: number;
   /** Descriptions of all discovered clues. */
   discoveredClueDescriptions: string[];
 }
 
-export function accusationContext(
+export function solutionContext(
   mystery: Mystery,
   state: GameState,
-): AccusationContext {
+): SolutionContext {
   const found = discoveredClueIds(state);
 
   return {
@@ -201,7 +201,7 @@ export function accusationContext(
       name: c.name,
       personality: c.personality,
     })),
-    priorFailures: state.accusations.filter((a) => a.outcome !== "correct")
+    priorFailures: state.theories.filter((t) => t.outcome !== "solved")
       .length,
     discoveredClueDescriptions: mystery.clues
       .filter((c) => found.has(c.id))
