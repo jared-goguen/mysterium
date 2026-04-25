@@ -1,15 +1,12 @@
 /**
  * API routes — Hono catch-all for Cloudflare Pages Functions
  *
- * Five routes that bridge the React UI to the AI engines:
+ * Five routes bridging the React UI to the AI engines:
  *   POST /api/examine    → Examiner (Haiku)
- *   POST /api/chat       → Conversant (Sonnet, SSE streaming) + Clue Detector (Haiku)
- *   POST /api/summarize  → Summarizer (Haiku)
- *   POST /api/accuse     → Judge (Sonnet)
- *   POST /api/give-up    → Judge (Sonnet)
- *
- * Each route: parse body → validate → call engine → return result.
- * Game state travels with each request (stateless server).
+ *   POST /api/chat       → Conversant (Sonnet, SSE) + Clue Detector (Haiku)
+ *   POST /api/summarize  → Summarizer (Haiku) — auto-called on FOCUS away from character
+ *   POST /api/solve      → Judge (Sonnet) — timeline reconstruction evaluation
+ *   POST /api/give-up    → Judge (Sonnet) — reveal solution
  */
 
 import { Hono } from "hono";
@@ -31,17 +28,16 @@ type Env = {
 const app = new Hono<Env>().basePath("/api");
 
 // ---------------------------------------------------------------------------
-// POST /api/examine
+// POST /api/examine — location examination
 // ---------------------------------------------------------------------------
 
 app.post("/examine", async (c) => {
-  const { gameState, locationId, query } = await c.req.json<{
+  const { gameState, message } = await c.req.json<{
     gameState: GameState;
-    locationId: string;
-    query: string;
+    message: string;
   }>();
 
-  const action = { type: "EXAMINE" as const, locationId, query };
+  const action = { type: "INTERACT" as const, message };
   const validation = validateAction(gameState, action);
   if (!validation.valid) {
     return c.json({ error: validation.reason }, 400);
@@ -53,17 +49,16 @@ app.post("/examine", async (c) => {
 });
 
 // ---------------------------------------------------------------------------
-// POST /api/chat — SSE streaming
+// POST /api/chat — NPC conversation (SSE streaming)
 // ---------------------------------------------------------------------------
 
 app.post("/chat", async (c) => {
-  const { gameState, characterId, message } = await c.req.json<{
+  const { gameState, message } = await c.req.json<{
     gameState: GameState;
-    characterId: string;
     message: string;
   }>();
 
-  const action = { type: "SAY" as const, characterId, message };
+  const action = { type: "INTERACT" as const, message };
   const validation = validateAction(gameState, action);
   if (!validation.valid) {
     return c.json({ error: validation.reason }, 400);
@@ -71,7 +66,6 @@ app.post("/chat", async (c) => {
 
   const client = createClient(c.env.ANTHROPIC_API_KEY);
 
-  // Stream the NPC response via SSE
   const stream = new ReadableStream({
     async start(controller) {
       const encoder = new TextEncoder();
@@ -87,7 +81,6 @@ app.post("/chat", async (c) => {
           sendEvent("delta", { text: delta });
         });
 
-        // Final event with complete result
         sendEvent("done", {
           response: result.response,
           cluesRevealed: result.cluesRevealed,
@@ -112,7 +105,7 @@ app.post("/chat", async (c) => {
 });
 
 // ---------------------------------------------------------------------------
-// POST /api/summarize
+// POST /api/summarize — conversation summarization (auto on FOCUS away)
 // ---------------------------------------------------------------------------
 
 app.post("/summarize", async (c) => {
@@ -121,38 +114,23 @@ app.post("/summarize", async (c) => {
     characterId: string;
   }>();
 
-  const action = { type: "END_CONVERSATION" as const, characterId };
-  const validation = validateAction(gameState, action);
-  if (!validation.valid) {
-    return c.json({ error: validation.reason }, 400);
-  }
-
   const client = createClient(c.env.ANTHROPIC_API_KEY);
-  const result = await summarize(client, gameState, action);
+  const result = await summarize(client, gameState, characterId);
   return c.json(result);
 });
 
 // ---------------------------------------------------------------------------
-// POST /api/accuse
+// POST /api/solve — timeline reconstruction evaluation
 // ---------------------------------------------------------------------------
 
-app.post("/accuse", async (c) => {
-  const { gameState, suspectId, motive, method, evidenceCited } =
-    await c.req.json<{
-      gameState: GameState;
-      suspectId: string;
-      motive: string;
-      method: string;
-      evidenceCited: string[];
-    }>();
+app.post("/solve", async (c) => {
+  const { gameState, answers, evidenceCited } = await c.req.json<{
+    gameState: GameState;
+    answers: Record<string, string>;
+    evidenceCited: string[];
+  }>();
 
-  const action = {
-    type: "ACCUSE" as const,
-    suspectId,
-    motive,
-    method,
-    evidenceCited,
-  };
+  const action = { type: "SOLVE" as const, answers, evidenceCited };
   const validation = validateAction(gameState, action);
   if (!validation.valid) {
     return c.json({ error: validation.reason }, 400);
@@ -164,7 +142,7 @@ app.post("/accuse", async (c) => {
 });
 
 // ---------------------------------------------------------------------------
-// POST /api/give-up
+// POST /api/give-up — reveal the full solution
 // ---------------------------------------------------------------------------
 
 app.post("/give-up", async (c) => {
