@@ -7,13 +7,13 @@
  */
 
 import type { Mystery, Clue } from "../../types/mystery";
-import type { Focus, Exploration, Conversation, NPCState } from "../../types/state";
+import type { FocusTarget, Exploration, Conversation, NPCState } from "../../types/state";
 import { LocationView } from "./LocationView";
 import { ChatPanel } from "./ChatPanel";
 
 interface MainPanelProps {
   mystery: Mystery;
-  focus: Focus;
+  focus: FocusTarget;
   explorations: Exploration[];
   conversations: Conversation[];
   npcStates: Record<string, NPCState>;

@@ -1,20 +1,20 @@
 /**
  * GameBoard.tsx — Top-level game screen
  *
- * Three-panel flexbox layout + AccusationModal overlay.
+ * Three-panel layout + SolutionModal overlay.
  */
 
 import { useState, useCallback } from "react";
-import type { GameState, AccusationOutcome } from "../../types/state";
+import type { GameState } from "../../types/state";
 import type { Mystery, Clue } from "../../types/mystery";
 import type { EventEntry } from "../../lib/events";
+import type { FocusTarget } from "../../types/actions";
 import { NavBar } from "./NavBar";
 import { MainPanel } from "./MainPanel";
 import { NotesPanel } from "./NotesPanel";
 import { EventLog } from "./EventLog";
-import { AccusationModal } from "./AccusationModal";
+import { SolutionModal } from "./SolutionModal";
 
-/** Props accepted from either useMockGameState or useGameState. */
 export interface GameBoardProps {
   game: {
     gameState: GameState | null;
@@ -28,13 +28,9 @@ export interface GameBoardProps {
     streamingText: string | null;
     loading: boolean;
     error: string | null;
-    pendingMessage: string | null;
-    moveTo: (locationId: string) => void;
-    examine: (query: string) => void;
-    talkTo: (characterId: string) => void;
-    sendMessage: (characterId: string, message: string) => void;
-    endConversation: () => void;
-    accuse: (suspectId: string, motive: string, method: string, evidenceCited: string[]) => void;
+    focus: (target: FocusTarget) => void;
+    interact: (message: string) => void;
+    solve: (answers: Record<string, string>, evidenceCited: string[]) => void;
     giveUp: () => void;
     updateNotes: (text: string) => void;
   };
@@ -42,42 +38,17 @@ export interface GameBoardProps {
 
 export function GameBoard({ game }: GameBoardProps) {
   const { mystery, gameState } = game;
+  const [solutionOpen, setSolutionOpen] = useState(false);
 
-  const [accusationOpen, setAccusationOpen] = useState(false);
-  const [accusationResult, setAccusationResult] = useState<{
-    outcome: AccusationOutcome;
-    narrative: string;
-    gameOver: boolean;
-  } | null>(null);
-
-  const handleAccuse = useCallback(
-    (suspectId: string, motive: string, method: string, evidenceCited: string[]) => {
-      game.accuse(suspectId, motive, method, evidenceCited);
-    },
-    [game.accuse],
+  const handleFocusLocation = useCallback(
+    (locationId: string) => game.focus({ type: "location", id: locationId }),
+    [game.focus],
   );
 
-  // Watch for new accusations in state to capture the result
-  const lastAccusation = gameState?.accusations[gameState.accusations.length - 1];
-  const displayResult =
-    accusationOpen && lastAccusation && !accusationResult
-      ? {
-          outcome: lastAccusation.outcome,
-          narrative: lastAccusation.consequence.narrative,
-          gameOver: lastAccusation.consequence.gameOver,
-        }
-      : accusationResult;
-
-  // When modal opens, clear previous result
-  const openAccusation = useCallback(() => {
-    setAccusationResult(null);
-    setAccusationOpen(true);
-  }, []);
-
-  const closeAccusation = useCallback(() => {
-    setAccusationOpen(false);
-    setAccusationResult(null);
-  }, []);
+  const handleFocusCharacter = useCallback(
+    (characterId: string) => game.focus({ type: "character", id: characterId }),
+    [game.focus],
+  );
 
   if (!mystery || !gameState) {
     return (
@@ -89,21 +60,17 @@ export function GameBoard({ game }: GameBoardProps) {
 
   return (
     <div className="flex h-screen flex-col bg-[var(--bg-primary)]">
-      {/* Error banner */}
       {game.error && (
         <div className="shrink-0 bg-red-950/80 px-4 py-2 text-xs text-red-300">
           ⚠️ {game.error}
         </div>
       )}
 
-      {/* Main three-panel area */}
       <div className="flex min-h-0 flex-1">
-        {/* Left panel — Event Log */}
         <div className="w-72 shrink-0 border-r border-[var(--border-subtle)]">
           <EventLog eventLog={game.eventLog} />
         </div>
 
-        {/* Center panel — Main interaction */}
         <MainPanel
           mystery={mystery}
           focus={gameState.focus}
@@ -113,18 +80,21 @@ export function GameBoard({ game }: GameBoardProps) {
           discoveredClues={game.discoveredClues}
           streamingText={game.streamingText}
           loading={game.loading}
-          pendingMessage={game.pendingMessage}
-          onExamine={game.examine}
-          onTalkTo={game.talkTo}
-          onSendMessage={game.sendMessage}
-          onEndConversation={game.endConversation}
+          pendingMessage={null}
+          onExamine={game.interact}
+          onTalkTo={handleFocusCharacter}
+          onSendMessage={(_charId, msg) => game.interact(msg)}
+          onEndConversation={() => {
+            const loc = mystery.locations.find((l) =>
+              l.charactersPresent.includes(gameState.focus.id),
+            );
+            game.focus({ type: "location", id: loc?.id ?? mystery.locations[0]!.id });
+          }}
         />
 
-        {/* Right panel — Notes */}
         <NotesPanel notes={game.notes} onUpdateNotes={game.updateNotes} />
       </div>
 
-      {/* Bottom navigation bar */}
       <NavBar
         mystery={mystery}
         focus={gameState.focus}
@@ -132,21 +102,20 @@ export function GameBoard({ game }: GameBoardProps) {
         interviewedCharacters={game.interviewedCharacters}
         discoveredClues={game.discoveredClues}
         npcStates={gameState.npcStates}
-        onMoveTo={game.moveTo}
-        onTalkTo={game.talkTo}
-        onAccuse={openAccusation}
+        onMoveTo={handleFocusLocation}
+        onTalkTo={handleFocusCharacter}
+        onSolve={() => setSolutionOpen(true)}
         onGiveUp={game.giveUp}
       />
 
-      {/* Accusation modal */}
-      {accusationOpen && (
-        <AccusationModal
-          characters={mystery.characters}
+      {solutionOpen && (
+        <SolutionModal
+          mystery={mystery}
           discoveredClues={game.discoveredClues}
           loading={game.loading}
-          onAccuse={handleAccuse}
-          onClose={closeAccusation}
-          lastResult={displayResult}
+          lastTheory={gameState.theories[gameState.theories.length - 1] ?? null}
+          onSolve={game.solve}
+          onClose={() => setSolutionOpen(false)}
         />
       )}
     </div>

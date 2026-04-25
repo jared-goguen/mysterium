@@ -6,19 +6,19 @@
  */
 
 import type { Mystery, Character, Location } from "../../types/mystery";
-import type { Focus } from "../../types/state";
+import type { FocusTarget } from "../../types/state";
 import type { Clue } from "../../types/mystery";
 
 interface NavBarProps {
   mystery: Mystery;
-  focus: Focus;
+  focus: FocusTarget;
   visitedLocations: Set<string>;
   interviewedCharacters: Set<string>;
   discoveredClues: Clue[];
   npcStates: Record<string, { emotion: string; cooperativeness: number }>;
   onMoveTo: (locationId: string) => void;
   onTalkTo: (characterId: string) => void;
-  onAccuse: () => void;
+  onSolve: () => void;
   onGiveUp: () => void;
 }
 
@@ -51,7 +51,7 @@ export function NavBar({
   npcStates,
   onMoveTo,
   onTalkTo,
-  onAccuse,
+  onSolve,
   onGiveUp,
 }: NavBarProps) {
   const badgeColor = genreBadgeColors[mystery.genre] ?? "bg-neutral-700 text-neutral-300";
@@ -137,9 +137,9 @@ export function NavBar({
         Give up
       </button>
 
-      {/* Accusation button */}
+      {/* Solve button */}
       <button
-        onClick={onAccuse}
+        onClick={onSolve}
         disabled={discoveredClues.length === 0}
         className={`rounded px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
           discoveredClues.length > 0
@@ -147,7 +147,7 @@ export function NavBar({
             : "cursor-not-allowed bg-neutral-800 text-neutral-600"
         }`}
       >
-        ⚖️ Accuse
+        🔍 Solve
       </button>
     </nav>
   );

@@ -264,15 +264,12 @@ function buildEventLog(state: GameState): LogEntry[] {
     }
   }
 
-  for (const accusation of state.accusations) {
-    const suspectName =
-      state.mystery.characters.find((c) => c.id === accusation.suspectId)?.name ??
-      accusation.suspectId;
+  for (const theory of state.theories) {
     entries.push({
       type: "accusation",
-      text: `Accused ${suspectName} — ${accusation.outcome}`,
-      detail: accusation.consequence.narrative,
-      timestamp: accusation.timestamp,
+      text: `Theory: ${theory.outcome} (${Math.round(theory.score * 100)}%)`,
+      detail: theory.narrative,
+      timestamp: theory.timestamp,
     });
   }
 

@@ -15,16 +15,16 @@ import type { EventEntry } from "../../lib/events";
 
 function EventRow({ entry }: { entry: EventEntry }) {
   const isClue = entry.type === "examine_clue";
-  const isAccuseCorrect = entry.type === "accuse_correct";
-  const isAccuseWrong = entry.type === "accuse_wrong" || entry.type === "accuse_partial";
+  const isSolved = entry.type === "theory_solved";
+  const isFailed = entry.type === "theory_wrong" || entry.type === "theory_close";
 
   return (
     <div
       className={[
         "py-1.5 px-2 rounded",
         isClue ? "bg-amber-950/40" : "",
-        isAccuseCorrect ? "bg-green-950/40" : "",
-        isAccuseWrong ? "bg-red-950/30" : "",
+        isSolved ? "bg-green-950/40" : "",
+        isFailed ? "bg-red-950/30" : "",
       ]
         .filter(Boolean)
         .join(" ")}
@@ -36,9 +36,9 @@ function EventRow({ entry }: { entry: EventEntry }) {
             "text-xs leading-5 flex-1",
             isClue
               ? "text-amber-400 font-medium"
-              : isAccuseCorrect
+              : isSolved
                 ? "text-green-400 font-medium"
-                : isAccuseWrong
+                : isFailed
                   ? "text-red-400"
                   : "text-neutral-300",
           ].join(" ")}
