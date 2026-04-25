@@ -320,6 +320,8 @@ export interface MockGameState {
 
   /** Last error message. (Always null in mock.) */
   error: string | null;
+  /** Player message shown optimistically. (Always null in mock.) */
+  pendingMessage: string | null;
 
   // -- Actions --
 
@@ -496,6 +498,7 @@ export function useMockGameState(): MockGameState {
     streamingText: null,
     loading: false,
     error: null,
+    pendingMessage: null,
     startGame,
     moveTo,
     examine,

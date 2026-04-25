@@ -41,6 +41,8 @@ interface ChatPanelProps {
   streamingText: string | null;
   /** Whether an API call is in flight. */
   loading: boolean;
+  /** Player message shown optimistically before API confirms. */
+  pendingMessage: string | null;
   onSendMessage: (message: string) => void;
   onEndConversation: () => void;
 }
@@ -55,6 +57,7 @@ export function ChatPanel({
   npcState,
   streamingText,
   loading,
+  pendingMessage,
   onSendMessage,
   onEndConversation,
 }: ChatPanelProps) {
@@ -159,19 +162,40 @@ export function ChatPanel({
                 </div>
               );
             })}
-            {/* Streaming response bubble */}
-            {streamingText !== null && (
+            {/* Optimistic player message — shown immediately on send */}
+            {pendingMessage && (
+              <div className="flex justify-end">
+                <div className="max-w-[75%] rounded-lg bg-blue-950 px-3 py-2 text-sm leading-relaxed text-blue-100">
+                  {pendingMessage}
+                </div>
+              </div>
+            )}
+            {/* Typing indicator — waiting for first NPC token */}
+            {loading && streamingText !== null && !streamingText && (
+              <div className="flex justify-start">
+                <span className="mr-2 mt-1 shrink-0 text-xs font-medium text-[var(--text-muted)]">
+                  {firstName}
+                </span>
+                <div className="max-w-[75%] rounded-lg bg-neutral-800 px-3 py-2 text-sm leading-relaxed">
+                  <span className="inline-flex gap-1">
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-neutral-500" style={{ animationDelay: "0ms" }} />
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-neutral-500" style={{ animationDelay: "150ms" }} />
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-neutral-500" style={{ animationDelay: "300ms" }} />
+                  </span>
+                </div>
+              </div>
+            )}
+            {/* Streaming response bubble — once tokens start flowing */}
+            {streamingText ? (
               <div className="flex justify-start">
                 <span className="mr-2 mt-1 shrink-0 text-xs font-medium text-[var(--text-muted)]">
                   {firstName}
                 </span>
                 <div className="max-w-[75%] rounded-lg bg-neutral-800 px-3 py-2 text-sm leading-relaxed text-[var(--text-primary)]">
-                  {streamingText || (
-                    <span className="animate-pulse text-[var(--text-muted)]">…</span>
-                  )}
+                  {streamingText}
                 </div>
               </div>
-            )}
+            ) : null}
             <div ref={messagesEndRef} />
           </div>
         )}

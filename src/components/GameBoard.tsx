@@ -28,6 +28,7 @@ export interface GameBoardProps {
     streamingText: string | null;
     loading: boolean;
     error: string | null;
+    pendingMessage: string | null;
     moveTo: (locationId: string) => void;
     examine: (query: string) => void;
     talkTo: (characterId: string) => void;
@@ -112,6 +113,7 @@ export function GameBoard({ game }: GameBoardProps) {
           discoveredClues={game.discoveredClues}
           streamingText={game.streamingText}
           loading={game.loading}
+          pendingMessage={game.pendingMessage}
           onExamine={game.examine}
           onTalkTo={game.talkTo}
           onSendMessage={game.sendMessage}
