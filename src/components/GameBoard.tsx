@@ -12,6 +12,7 @@
 import type { MockGameState } from "../hooks/useMockGameState";
 import { NavBar } from "./NavBar";
 import { MainPanel } from "./MainPanel";
+import { NotesPanel } from "./NotesPanel";
 
 interface GameBoardProps {
   game: MockGameState;
@@ -75,26 +76,7 @@ export function GameBoard({ game }: GameBoardProps) {
         <MainPanel mystery={mystery} focus={gameState.focus} />
 
         {/* Right panel — Notes */}
-        <div className="flex w-80 shrink-0 flex-col border-l border-[var(--border-subtle)] bg-[var(--bg-panel)]">
-          <div className="border-b border-[var(--border-subtle)] px-4 py-3">
-            <h3 className="text-xs font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-              📓 Detective&apos;s Notes
-            </h3>
-          </div>
-          <div className="flex flex-1 flex-col p-3">
-            <textarea
-              value={game.notes}
-              onChange={(e) => game.updateNotes(e.target.value)}
-              placeholder="Record your observations, suspicions, and theories..."
-              className="flex-1 resize-none rounded bg-[var(--bg-input)] p-3 font-mono text-sm text-[var(--text-primary)] placeholder-neutral-600 outline-none focus:ring-1 focus:ring-neutral-700"
-            />
-            <div className="mt-2 text-right text-[10px] text-[var(--text-muted)]">
-              {game.notes.length > 0
-                ? `${game.notes.split(/\s+/).filter(Boolean).length} words`
-                : ""}
-            </div>
-          </div>
-        </div>
+        <NotesPanel notes={game.notes} onUpdateNotes={game.updateNotes} />
       </div>
 
       {/* Bottom navigation bar */}
