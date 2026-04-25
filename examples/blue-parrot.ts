@@ -654,37 +654,118 @@ const mystery: Mystery = {
     },
   ],
   solution: {
-    culprit: "dolores",
-    motive:
-      "Insurance payout and freedom from a controlling, unfaithful husband who kept her trapped in a loveless marriage.",
-    method:
-      "Brought a flask of whiskey laced with cyanide extracted from rat poison. Swapped Victor's glass while he was distracted during Marlene's second set.",
-    opportunity:
-      "Entered through the back alley during the second set when all eyes were on the stage. Used the back stairs to reach Victor's office unseen.",
+    truth:
+      "Dolores Morel murdered her husband Victor by poisoning his whiskey with cyanide. She purchased rat poison three days before, prepared a flask of laced whiskey, and drove to the club during Marlene's second set. While Tommy was in the stockroom and all eyes were on the stage, she entered through the unlocked back door, climbed the back stairs to Victor's office, and swapped his glass. She left the way she came. Victor drank the poisoned whiskey and was dead within minutes. Later that evening, Frank Palazzo went up to Victor's office to threaten him about gambling debts, found him already dead, and wiped down every surface he'd touched — contaminating the crime scene. Tommy discovered the body at closing time. Dolores's alibi — that she was at the Orpheum Theater — was fabricated; the theater had been closed for renovation all week.",
+    moments: [
+      {
+        id: "moment-opening",
+        time: "8:30 PM",
+        isKnown: true,
+        knownDescription: "Victor Morel arrives at the Blue Parrot. Takes his reserved table, orders his usual rye whiskey.",
+        truth: { location: "main-floor", people: ["tommy"], description: "Victor arrives and settles in. Tommy serves him." },
+        supportingClues: [],
+        weight: 0,
+      },
+      {
+        id: "moment-frank-argument",
+        time: "9:15 PM",
+        isKnown: true,
+        knownDescription: "Frank Palazzo and Victor have an intense, whispered conversation at Victor's table. Victor looks agitated.",
+        truth: { location: "main-floor", people: ["frank"], description: "Frank pressures Victor about the $15,000 gambling debt." },
+        supportingClues: [],
+        weight: 0,
+      },
+      {
+        id: "moment-victor-office",
+        time: "9:30 PM",
+        isKnown: true,
+        knownDescription: "Victor goes upstairs to his office. Tommy brings a fresh bottle of rye.",
+        truth: { location: "victors-office", people: ["tommy"], description: "Victor retreats to his office. Tommy delivers a clean bottle — the poison hasn't been introduced yet." },
+        supportingClues: [],
+        weight: 0,
+      },
+      {
+        id: "moment-break",
+        time: "10:30 PM",
+        isKnown: false,
+        prompt: "What happened during the break between sets?",
+        truth: {
+          location: "back-alley",
+          people: ["eddie", "dolores", "tommy"],
+          description: "First set ends. Tommy goes to the stockroom to inventory a delivery. Eddie steps outside and calls Dolores on the phone — she tells him she's coming to the club. Dolores parks her car a block away.",
+        },
+        supportingClues: ["clue-insurance"],
+        weight: 0.2,
+      },
+      {
+        id: "moment-murder",
+        time: "10:40 PM",
+        isKnown: false,
+        prompt: "What happened in Victor's office?",
+        truth: {
+          location: "victors-office",
+          people: ["dolores"],
+          description: "Dolores enters through the back alley door and climbs the back stairs while the second set covers the noise. She enters Victor's office and swaps his whiskey glass with her prepared flask of cyanide-laced whiskey. She leaves the same way she came.",
+        },
+        supportingClues: ["clue-movie-stub", "clue-perfume", "clue-rat-poison"],
+        weight: 0.35,
+      },
+      {
+        id: "moment-death",
+        time: "10:50 PM",
+        isKnown: false,
+        prompt: "What happened to Victor?",
+        truth: {
+          location: "victors-office",
+          people: [],
+          description: "Victor drinks from the poisoned glass. Cyanide takes effect within minutes. He dies alone at his desk.",
+        },
+        supportingClues: [],
+        weight: 0.15,
+      },
+      {
+        id: "moment-frank-visit",
+        time: "11:30 PM",
+        isKnown: false,
+        prompt: "Who went upstairs later that night, and what did they find?",
+        truth: {
+          location: "victors-office",
+          people: ["frank"],
+          description: "Frank goes upstairs to make one final threat about the debt. He finds Victor dead — slumped over the desk, foam on his lips. Frank panics, wipes down everything he touched to remove his fingerprints, and goes back downstairs looking pale.",
+        },
+        supportingClues: ["clue-silk-thread"],
+        weight: 0.15,
+      },
+      {
+        id: "moment-discovery",
+        time: "12:30 AM",
+        isKnown: true,
+        knownDescription: "Club closes. Tommy goes upstairs to lock Victor's office and finds him dead at his desk. He calls the police.",
+        truth: { location: "victors-office", people: ["tommy"], description: "Tommy discovers the body at closing time." },
+        supportingClues: [],
+        weight: 0,
+      },
+    ],
     evidenceChain: [
       {
         order: 1,
         clueId: "clue-movie-stub",
-        whatItProves:
-          "Dolores's alibi is fabricated — the theater was closed for renovation.",
+        whatItProves: "Dolores's alibi is fabricated — the theater was closed for renovation.",
       },
       {
         order: 2,
         clueId: "clue-perfume",
-        whatItProves:
-          "Places Dolores at the crime scene — only she wears Shalimar.",
+        whatItProves: "Places Dolores at the crime scene — only she wears Shalimar.",
       },
       {
         order: 3,
         clueId: "clue-rat-poison",
-        whatItProves:
-          "Proves the method and premeditation — cyanide-based poison purchased days before.",
+        whatItProves: "Proves the method and premeditation — cyanide-based poison purchased days before.",
       },
       {
         order: 4,
         clueId: "clue-insurance",
-        whatItProves:
-          "Proves motive and premeditation — Dolores had been asking about Victor's life insurance.",
+        whatItProves: "Proves motive and premeditation — Dolores had been asking about Victor's life insurance.",
       },
     ],
   },
