@@ -17,9 +17,9 @@ Event = Time + Location + People + What happened
 ```
 
 Examples:
-- *10:40 PM · Victor's Office · Dolores* → "Swapped Victor's whiskey glass with a poisoned one"
-- *11:30 PM · Victor's Office · Frank* → "Found Victor dead, wiped down surfaces to remove his prints"
-- *10:30 PM · Stockroom · Tommy* → "Doing inventory, couldn't see the back hallway"
+- *10:40 PM · The Study · Suspect A* → "Entered through the back door and tampered with evidence"
+- *11:30 PM · The Study · Suspect B* → "Found the scene, panicked, contaminated evidence trying to cover their own tracks"
+- *10:30 PM · The Kitchen · Suspect C* → "Was occupied elsewhere, couldn't have seen the hallway"
 
 Evidence in the game works by placing people at locations at times. Clues reveal or constrain events. Contradictions arise when two accounts of the same moment conflict — resolving them is the core gameplay loop.
 
@@ -46,13 +46,13 @@ A mystery consists of:
 The mystery's timeline has two kinds of entries:
 
 **Known moments** — shown to the player from the start. They provide the framework:
-- "8:30 PM — Victor arrives at the club"
-- "9:30 PM — Victor goes to his office"
-- "12:30 AM — Tommy finds the body at closing time"
+- "8:30 PM — The victim arrives at the venue"
+- "9:30 PM — The victim retires to a private room"
+- "12:30 AM — The body is discovered"
 
 **Gaps** — hidden events the player must reconstruct through investigation:
-- "10:30 PM — What happened during the break between sets?"
-- "10:40 PM — What happened in Victor's office?"
+- "10:30 PM — What happened during the intermission?"
+- "10:40 PM — What happened in the private room?"
 
 Each gap has:
 - A **prompt** guiding what the player needs to figure out
@@ -81,7 +81,7 @@ The AI evaluates each answer on:
 - **Causal understanding** — does the player understand *why* this event happened?
 - **Evidence connection** — is the answer supported by discoverable clues?
 
-Partial credit is possible. "Frank went upstairs" scores higher than "nobody went upstairs" even if the player missed the detail about wiping down surfaces.
+Partial credit is possible. Identifying the right person at the right place scores higher than a wrong guess, even if the player missed secondary details.
 
 ## Why Timeline, Not Accusation
 
@@ -97,7 +97,7 @@ The original design framed the endgame as "accuse a suspect." Timeline reconstru
 
 **It creates richer feedback.** Instead of "right" or "wrong," the player learns which parts of the timeline they got right and where their understanding breaks down. This makes wrong attempts educational, not just punishing.
 
-**It's more satisfying.** The "aha" moment isn't "it was Dolores!" — it's "Dolores entered through the back alley at 10:40 during the second set when Tommy was in the stockroom and Eddie was on the phone with her — THAT'S how she did it unseen." The player has assembled a coherent narrative, not just a name.
+**It's more satisfying.** The "aha" moment isn't a single name — it's assembling a coherent narrative: "She entered through the back at 10:40 during the performance when one witness was occupied and another was distracted — THAT'S how she did it unseen." The player has reconstructed a story, not just identified a suspect.
 
 ## Game Loop
 
@@ -158,13 +158,10 @@ GameState
 ### Actions (state transitions)
 
 ```
-MOVE              → change location (no AI)
-EXAMINE           → examine something at a location (Haiku)
-TALK              → start talking to a character (no AI)
-SAY               → send message to NPC (Sonnet streaming + Haiku clue detection)
-END_CONVERSATION  → summarize + spread information (Haiku)
-SOLVE             → present timeline reconstruction (Sonnet)
-GIVE_UP           → reveal the full solution (Sonnet)
+FOCUS     → navigate to a location or character (no AI; auto-summarizes on leave)
+INTERACT  → context-dependent: examine at location (Haiku) or speak to character (Sonnet streaming + Haiku clue detection)
+SOLVE     → present timeline reconstruction (Sonnet)
+GIVE_UP   → reveal the full solution (Sonnet)
 ```
 
 ## Future Directions
