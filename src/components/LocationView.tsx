@@ -8,6 +8,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import type { Location, Clue } from "../../types/mystery";
+import { NarrativeText } from "./NarrativeText";
 
 interface ExamineResult {
   query: string;
@@ -68,12 +69,7 @@ export function LocationView({
     <div className="flex h-full flex-col">
       {/* Atmospheric description — the main visual element */}
       <div className="px-6 py-5">
-        <p
-          className="text-base leading-relaxed text-[var(--text-primary)]"
-          style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
-        >
-          {location.description}
-        </p>
+        <NarrativeText text={location.description} />
       </div>
 
       {/* Characters present */}
@@ -107,23 +103,21 @@ export function LocationView({
         ) : (
           <div className="space-y-4">
             {examineHistory.map((result, i) => (
-              <div key={i} className="space-y-1">
+              <div key={i} className="space-y-2">
                 <p className="text-xs uppercase tracking-wider text-[var(--text-muted)]">
                   &rsaquo; {result.query}
                 </p>
-                <p
-                  className={
-                    result.clueFound
-                      ? "text-sm leading-relaxed text-[var(--accent-clue)]"
-                      : "text-sm leading-relaxed text-[var(--text-primary)]"
-                  }
-                >
-                  {result.narrative}
-                </p>
+                <NarrativeText
+                  text={result.narrative}
+                  className={result.clueFound ? "narrative-clue-found" : ""}
+                />
                 {result.clueFound && (
-                  <p className="text-xs font-medium text-[var(--accent-clue)] opacity-75">
-                    ✦ Clue discovered
-                  </p>
+                  <div className="mt-2 flex items-center gap-2 rounded bg-amber-950/30 px-3 py-2">
+                    <span className="text-amber-400">✦</span>
+                    <span className="text-xs font-medium text-[var(--accent-clue)]">
+                      Clue discovered
+                    </span>
+                  </div>
                 )}
               </div>
             ))}

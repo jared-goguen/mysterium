@@ -1,14 +1,18 @@
 /**
  * ChatPanel.tsx — NPC interrogation interface
  *
- * Displays a chat-style conversation with a suspect or witness.
- * Player messages appear right-aligned; NPC messages left-aligned.
- * Auto-scrolls to the latest message on new entries.
+ * Two distinct message styles:
+ *   Player: right-aligned compact bubbles
+ *   NPC: full-width narrative blocks with rich text rendering
+ *        (stage directions in italic, paragraph breaks as beats)
+ *
+ * Auto-scrolls to the latest message. Supports streaming text.
  */
 
 import { useRef, useEffect, useState, type KeyboardEvent } from "react";
 import type { Character } from "../../types/mystery";
 import type { Conversation, NPCState } from "../../types/state";
+import { NarrativeText } from "./NarrativeText";
 
 // ---------------------------------------------------------------------------
 // Mood indicator
@@ -24,6 +28,12 @@ function moodEmoji(emotion: string): string {
       return "😤";
     case "scared":
       return "😨";
+    case "anxious":
+      return "😟";
+    case "defeated":
+      return "😔";
+    case "relieved":
+      return "😮‍💨";
     default:
       return "🤨";
   }
@@ -41,7 +51,7 @@ interface ChatPanelProps {
   streamingText: string | null;
   /** Whether an API call is in flight. */
   loading: boolean;
-  /** Player message shown optimistically before API confirms. */
+  /** Player message sent but not yet in conversation history (shown optimistically). */
   pendingMessage: string | null;
   onSendMessage: (message: string) => void;
   onEndConversation: () => void;
@@ -101,7 +111,7 @@ export function ChatPanel({
               {character.name}
             </h3>
             <p className="text-xs text-[var(--text-muted)]">
-              {character.description}
+              {character.personality}
             </p>
           </div>
         </div>
@@ -112,7 +122,7 @@ export function ChatPanel({
             <span className="text-xs text-[var(--text-muted)]">Cooperative</span>
             <div className="h-1.5 w-16 overflow-hidden rounded-full bg-neutral-800">
               <div
-                className="h-full rounded-full bg-amber-600 transition-all"
+                className="h-full rounded-full bg-amber-600 transition-all duration-500"
                 style={{ width: `${cooperativeness}%` }}
               />
             </div>
@@ -121,7 +131,8 @@ export function ChatPanel({
           {/* Back button */}
           <button
             onClick={onEndConversation}
-            className="flex items-center gap-1 rounded px-3 py-1.5 text-xs text-[var(--text-muted)] transition-colors hover:bg-neutral-800 hover:text-[var(--text-primary)]"
+            disabled={loading}
+            className="flex items-center gap-1 rounded px-3 py-1.5 text-xs text-[var(--text-muted)] transition-colors hover:bg-neutral-800 hover:text-[var(--text-primary)] disabled:opacity-40"
           >
             ← Back
           </button>
@@ -130,72 +141,72 @@ export function ChatPanel({
 
       {/* Message area */}
       <div className="flex-1 overflow-y-auto px-5 py-4">
-        {messages.length === 0 ? (
+        {messages.length === 0 && streamingText === null ? (
           <div className="flex h-full items-center justify-center">
-            <p className="text-sm italic text-[var(--text-muted)]">
-              {character.name} watches you warily. Ask your first question.
+            <p className="max-w-sm text-center text-sm italic text-[var(--text-muted)]" style={{ fontFamily: "Georgia, serif" }}>
+              {character.name} watches you warily. The silence stretches between you like a taut wire. Ask your first question.
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {messages.map((msg, i) => {
               const isPlayer = msg.role === "player";
+
+              if (isPlayer) {
+                // Player: right-aligned bubble
+                return (
+                  <div key={i} className="flex justify-end">
+                    <div className="max-w-[70%] rounded-lg bg-blue-950/80 px-4 py-2.5 text-sm leading-relaxed text-blue-100">
+                      {msg.content}
+                    </div>
+                  </div>
+                );
+              }
+
+              // NPC: full-width narrative block
               return (
-                <div
-                  key={i}
-                  className={`flex ${isPlayer ? "justify-end" : "justify-start"}`}
-                >
-                  {!isPlayer && (
-                    <span className="mr-2 mt-1 shrink-0 text-xs font-medium text-[var(--text-muted)]">
+                <div key={i} className="npc-message">
+                  <div className="mb-1.5 flex items-center gap-2">
+                    <span className="text-xs font-medium uppercase tracking-wider text-[var(--text-muted)]">
                       {firstName}
                     </span>
-                  )}
-                  <div
-                    className={`max-w-[75%] rounded-lg px-3 py-2 text-sm leading-relaxed ${
-                      isPlayer
-                        ? "bg-blue-950 text-blue-100"
-                        : "bg-neutral-800 text-[var(--text-primary)]"
-                    }`}
-                  >
-                    {msg.content}
+                    <div className="h-px flex-1 bg-neutral-800" />
+                  </div>
+                  <div className="pl-1">
+                    <NarrativeText text={msg.content} />
                   </div>
                 </div>
               );
             })}
-            {/* Optimistic player message — shown immediately on send */}
+
+            {/* Pending player message (sent but not yet in history) */}
             {pendingMessage && (
               <div className="flex justify-end">
-                <div className="max-w-[75%] rounded-lg bg-blue-950 px-3 py-2 text-sm leading-relaxed text-blue-100">
+                <div className="max-w-[70%] rounded-lg bg-blue-950/80 px-4 py-2.5 text-sm leading-relaxed text-blue-100">
                   {pendingMessage}
                 </div>
               </div>
             )}
-            {/* Typing indicator — waiting for first NPC token */}
-            {loading && streamingText !== null && !streamingText && (
-              <div className="flex justify-start">
-                <span className="mr-2 mt-1 shrink-0 text-xs font-medium text-[var(--text-muted)]">
-                  {firstName}
-                </span>
-                <div className="max-w-[75%] rounded-lg bg-neutral-800 px-3 py-2 text-sm leading-relaxed">
-                  <span className="inline-flex gap-1">
-                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-neutral-500" style={{ animationDelay: "0ms" }} />
-                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-neutral-500" style={{ animationDelay: "150ms" }} />
-                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-neutral-500" style={{ animationDelay: "300ms" }} />
+
+            {/* Streaming response */}
+            {streamingText !== null && (
+              <div className="npc-message">
+                <div className="mb-1.5 flex items-center gap-2">
+                  <span className="text-xs font-medium uppercase tracking-wider text-[var(--text-muted)]">
+                    {firstName}
                   </span>
+                  <div className="h-px flex-1 bg-neutral-800" />
+                </div>
+                <div className="pl-1">
+                  {streamingText ? (
+                    <NarrativeText text={streamingText} />
+                  ) : (
+                    <p className="narrative animate-pulse text-[var(--text-muted)]">…</p>
+                  )}
                 </div>
               </div>
             )}
-            {/* Streaming response bubble — once tokens start flowing */}
-            {streamingText ? (
-              <div className="flex justify-start">
-                <span className="mr-2 mt-1 shrink-0 text-xs font-medium text-[var(--text-muted)]">
-                  {firstName}
-                </span>
-                <div className="max-w-[75%] rounded-lg bg-neutral-800 px-3 py-2 text-sm leading-relaxed text-[var(--text-primary)]">
-                  {streamingText}
-                </div>
-              </div>
-            ) : null}
+
             <div ref={messagesEndRef} />
           </div>
         )}
@@ -220,7 +231,7 @@ export function ChatPanel({
             Send
           </button>
         </div>
-        <p className="mt-1.5 text-xs text-[var(--text-muted)]">
+        <p className="mt-1.5 text-xs italic text-[var(--text-muted)]">
           {character.speechPattern}
         </p>
       </div>

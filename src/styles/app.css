@@ -17,6 +17,52 @@ body {
   background: var(--bg-primary);
 }
 
+/* Narrative text — rich rendering for AI-generated prose */
+.narrative {
+  font-family: Georgia, "Times New Roman", serif;
+  line-height: 1.75;
+  font-size: 0.9375rem;
+}
+
+.narrative-paragraph {
+  margin-bottom: 0.75rem;
+  color: var(--text-primary);
+}
+
+.narrative-paragraph:last-child {
+  margin-bottom: 0;
+}
+
+.narrative-action {
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+.narrative-dialogue {
+  color: var(--text-primary);
+}
+
+/* Action-only paragraphs get extra spacing — they're beats */
+.narrative-action-block {
+  font-style: italic;
+  color: var(--text-muted);
+  margin-bottom: 0.875rem;
+  padding-left: 0.25rem;
+}
+
+.narrative-action-block:last-child {
+  margin-bottom: 0;
+}
+
+/* Clue discovery — narrative text gets amber tint */
+.narrative-clue-found .narrative-dialogue {
+  color: var(--accent-clue);
+}
+
+.narrative-clue-found .narrative-paragraph {
+  color: var(--accent-clue);
+}
+
 /* Scrollbar styling for the noir theme */
 ::-webkit-scrollbar {
   width: 6px;
