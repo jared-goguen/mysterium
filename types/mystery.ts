@@ -242,6 +242,21 @@ export interface Mystery {
   /** Unique ID for this generated mystery. */
   id: string;
 
+  /** Human-readable name: "Death at the Blue Parrot". */
+  title: string;
+
+  /** Who created it: "manual", "generated", or a player name. */
+  author: string;
+
+  /** Unix timestamp of when this mystery was created. */
+  createdAt: number;
+
+  /** Difficulty rating, 1 (straightforward) to 5 (devious). */
+  difficulty: number;
+
+  /** Spoiler-free teaser for the mystery listing. */
+  description: string;
+
   genre: Genre;
 
   /** Setting: name, era, one-line atmosphere. */
