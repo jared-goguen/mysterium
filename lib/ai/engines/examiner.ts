@@ -47,5 +47,6 @@ export async function examine(
     context: "location",
     narrative: raw.narrative,
     clueFound,
+    matchedExaminable: raw.matchedExaminable,
   };
 }

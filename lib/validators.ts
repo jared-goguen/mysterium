@@ -42,10 +42,9 @@ export function validateAction(
           (c) => c.id === target.id,
         );
         if (!character) return fail(`Unknown character: ${target.id}`);
-        const npcState = state.npcStates[target.id];
-        if (npcState && npcState.cooperativeness <= 0) {
-          return fail(`${character.name} refuses to speak with you.`);
-        }
+        // Narrators are always accessible regardless of rapport
+        // Regular characters are always available too (rapport affects
+        // depth of sharing, not availability)
       }
       return ok;
     }

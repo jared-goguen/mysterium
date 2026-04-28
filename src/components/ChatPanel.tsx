@@ -94,7 +94,7 @@ export function ChatPanel({
   };
 
   const emotion = npcState?.emotion ?? "unknown";
-  const cooperativeness = npcState?.cooperativeness ?? 50;
+  const rapport = npcState?.rapport ?? 40;
   const firstName = character.name.split(" ")[0] ?? character.name;
   const messages = conversation?.messages ?? [];
 
@@ -123,7 +123,7 @@ export function ChatPanel({
             <div className="h-1.5 w-16 overflow-hidden rounded-full bg-neutral-800">
               <div
                 className="h-full rounded-full bg-amber-600 transition-all duration-500"
-                style={{ width: `${cooperativeness}%` }}
+                style={{ width: `${rapport}%` }}
               />
             </div>
           </div>

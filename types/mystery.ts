@@ -16,7 +16,8 @@ export type Genre =
   | "cozy"       // village, tea, gardens, eccentricity
   | "scifi"      // sterile corridors, holograms, corporate conspiracy
   | "historical" // period language, social hierarchy, propriety
-  | "heist";     // the crime already happened — who double-crossed whom?
+  | "heist"      // the crime already happened — who double-crossed whom?
+  | "fantasy";   // castles, magic, prophecy, court intrigue     // the crime already happened — who double-crossed whom?
 
 // ---------------------------------------------------------------------------
 // Characters
@@ -51,6 +52,18 @@ export interface Character {
   personality: string;
   /** How they talk: formal, clipped, folksy, academic, etc. */
   speechPattern: string;
+
+  // -- Role --
+
+  /** Suspect = regular character. Narrator = always-accessible case briefer. */
+  role: "suspect" | "narrator";
+
+  // -- Interests (drives conversation engagement) --
+
+  /** Topics this character is passionate/knowledgeable about. */
+  interests: string[];
+  /** Topics this character finds boring or irrelevant. */
+  dismissiveOf: string[];
 
   // -- Crime-related --
 
@@ -98,6 +111,12 @@ export interface Examinable {
   onExamine: string;
   /** If this object hides a clue, the clue's ID. Otherwise null. */
   clueId: string | null;
+  /**
+   * If set, this examinable only becomes visible after the prerequisite
+   * examinable has been examined. Creates layered discovery chains:
+   * desk → drawer → letter.
+   */
+  prerequisite: string | null;
 }
 
 export interface Location {

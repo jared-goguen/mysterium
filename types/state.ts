@@ -21,6 +21,8 @@ export interface Exploration {
   query: string;
   /** If this examination revealed a clue, the clue ID. Otherwise null. */
   clueFound: string | null;
+  /** The examinable ID that was matched, if any. Used for prerequisite tracking. */
+  examinableId: string | null;
   /** The AI's narrative response describing what was found. */
   narrative: string;
   timestamp: number;
@@ -121,8 +123,14 @@ export interface NPCState {
   characterId: string;
   /** Current emotional state: "nervous", "hostile", "calm", "terrified", etc. */
   emotion: string;
-  /** How willing they are to talk. 0 = refuses, 100 = fully cooperative. */
-  cooperativeness: number;
+  /**
+   * How much trust the player has built with this character (0–100).
+   * Starts low (~40), increases with good conversation.
+   * Higher rapport = character shares more personal/nuanced information.
+   * Characters always talk; rapport affects depth, not availability.
+   * Narrators always have rapport 100.
+   */
+  rapport: number;
   /** What this NPC knows about the investigation (information that spread to them). */
   awareness: string[];
 }

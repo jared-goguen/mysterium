@@ -86,7 +86,7 @@ ${guiltyInstructions}
 
 CURRENT STATE:
 - Emotional state: ${npcState.emotion}
-- Cooperativeness: ${npcState.cooperativeness}/100${awarenessNote}
+- Rapport with investigator: ${npcState.rapport}/100${awarenessNote}
 
 INVESTIGATION STATUS:${discoveredNote}${interviewNote}${accusationNote}${summaryNote}
 

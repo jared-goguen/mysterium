@@ -45,7 +45,7 @@ export interface ClientAlibi {
 
 /**
  * Character stripped of guilt, secrets, true alibi, and investigation knowledge.
- * Keeps: identity, personality, speech, motive (public), claimed alibi, relationships.
+ * Keeps: identity, personality, speech, role, interests, motive (public), claimed alibi, relationships.
  */
 export interface ClientCharacter {
   id: string;
@@ -53,6 +53,9 @@ export interface ClientCharacter {
   description: string;
   personality: string;
   speechPattern: string;
+  role: "suspect" | "narrator";
+  interests: string[];
+  dismissiveOf: string[];
   motive: string;
   alibi: ClientAlibi;
   relationships: Record<string, string>;
@@ -65,11 +68,13 @@ export interface ClientCharacter {
 /**
  * Examinable stripped of onExamine text and clueId.
  * The player sees what's there but doesn't know what examining it yields.
+ * Prerequisite preserved so the client can compute available examinables.
  */
 export interface ClientExaminable {
   id: string;
   name: string;
   surfaceDetail: string;
+  prerequisite: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -197,6 +202,24 @@ export interface ClientGameState {
 }
 
 // ---------------------------------------------------------------------------
+// Mystery list item (catalog)
+// ---------------------------------------------------------------------------
+
+/** Minimal metadata for mystery selection UI. */
+export interface MysteryListItem {
+  id: string;
+  title: string;
+  genre: Genre;
+  difficulty: number;
+  description: string;
+  setting: {
+    name: string;
+    era: string;
+    atmosphere: string;
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Strip functions
 // ---------------------------------------------------------------------------
 
@@ -207,6 +230,9 @@ function stripCharacter(c: Character): ClientCharacter {
     description: c.description,
     personality: c.personality,
     speechPattern: c.speechPattern,
+    role: c.role,
+    interests: c.interests,
+    dismissiveOf: c.dismissiveOf,
     motive: c.motive,
     alibi: {
       claimed: c.alibi.claimed,
@@ -221,6 +247,7 @@ function stripExaminable(e: Examinable): ClientExaminable {
     id: e.id,
     name: e.name,
     surfaceDetail: e.surfaceDetail,
+    prerequisite: e.prerequisite,
   };
 }
 
@@ -277,6 +304,18 @@ function stripSolutionMoment(m: SolutionMoment): ClientSolutionMoment {
 function stripSolution(s: Solution): ClientSolution {
   return {
     moments: s.moments.map(stripSolutionMoment),
+  };
+}
+
+/** Strip a Mystery down to a minimal catalog item. */
+export function stripToListItem(mystery: Mystery): MysteryListItem {
+  return {
+    id: mystery.id,
+    title: mystery.title,
+    genre: mystery.genre,
+    difficulty: mystery.difficulty,
+    description: mystery.description,
+    setting: { ...mystery.setting },
   };
 }
 
@@ -386,4 +425,37 @@ export function clientGetConversation(
   characterId: string,
 ): ClientGameState["conversations"][number] | undefined {
   return state.conversations.find((c) => c.characterId === characterId);
+}
+
+/**
+ * Set of examinable IDs the player has successfully matched at a location.
+ * Used to determine which prerequisite-gated examinables are available.
+ */
+export function clientExaminedExaminableIds(
+  state: ClientGameState,
+  locationId: string,
+): Set<string> {
+  return new Set(
+    state.explorations
+      .filter((e) => e.locationId === locationId && e.examinableId !== null)
+      .map((e) => e.examinableId!),
+  );
+}
+
+/**
+ * Available examinables at a location, filtered by prerequisite completion.
+ * An examinable is available if it has no prerequisite, or its prerequisite
+ * has been examined (matched) by the player.
+ */
+export function clientAvailableExaminables(
+  state: ClientGameState,
+  locationId: string,
+): ClientExaminable[] {
+  const location = state.mystery.locations.find((l) => l.id === locationId);
+  if (!location) return [];
+
+  const examined = clientExaminedExaminableIds(state, locationId);
+  return location.examinables.filter(
+    (e) => e.prerequisite === null || examined.has(e.prerequisite),
+  );
 }

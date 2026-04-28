@@ -102,6 +102,8 @@ export interface ExamineInteractResult {
   narrative: string;
   /** Clue ID if an undiscovered clue was found, null otherwise. */
   clueFound: string | null;
+  /** The examinable ID that was matched, null if freeform examination. */
+  matchedExaminable: string | null;
 }
 
 /** INTERACT with a character: conversation. */

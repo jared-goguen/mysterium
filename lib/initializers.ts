@@ -11,7 +11,8 @@ function initNPCStates(mystery: Mystery): Record<string, NPCState> {
     states[character.id] = {
       characterId: character.id,
       emotion: "calm",
-      cooperativeness: 100,
+      // Narrators always at max rapport; suspects start at 40
+      rapport: character.role === "narrator" ? 100 : 40,
       awareness: [],
     };
   }
@@ -24,6 +25,13 @@ export function createGameState(mystery: Mystery): GameState {
     throw new Error("Mystery must have at least one location");
   }
 
+  // If there's a narrator, start focused on them for the intro briefing.
+  // Otherwise, start at the first location.
+  const narrator = mystery.characters.find((c) => c.role === "narrator");
+  const initialFocus = narrator
+    ? { type: "character" as const, id: narrator.id }
+    : { type: "location" as const, id: firstLocation.id };
+
   return {
     mystery,
     phase: "playing",
@@ -31,7 +39,7 @@ export function createGameState(mystery: Mystery): GameState {
     conversations: [],
     theories: [],
     npcStates: initNPCStates(mystery),
-    focus: { type: "location", id: firstLocation.id },
+    focus: initialFocus,
     startedAt: Date.now(),
   };
 }

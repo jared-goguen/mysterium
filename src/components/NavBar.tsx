@@ -14,7 +14,7 @@ interface NavBarProps {
   visitedLocations: Set<string>;
   interviewedCharacters: Set<string>;
   discoveredClues: ClientClue[];
-  npcStates: Record<string, { emotion: string; cooperativeness: number }>;
+  npcStates: Record<string, { emotion: string; rapport: number }>;
   onMoveTo: (locationId: string) => void;
   onTalkTo: (characterId: string) => void;
   onSolve: () => void;

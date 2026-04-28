@@ -113,6 +113,7 @@ export function applyInteract(
           locationId: state.focus.id,
           query: action.message,
           clueFound: result.clueFound,
+          examinableId: result.matchedExaminable,
           narrative: result.narrative,
           timestamp,
         },
