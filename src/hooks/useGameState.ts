@@ -185,13 +185,13 @@ export function useGameState(): GameStateHook {
         })
           .then((conversationEnded) => {
             const focusResult: FocusResult = { conversationEnded: conversationEnded ?? undefined };
-            const next = applyFocus(gameState, { type: "FOCUS", target }, focusResult);
+            const next = applyFocus(gameState, { type: "FOCUS", target }, focusResult, Date.now());
             dispatch({ type: "SET_GAME", game: next });
             dispatch({ type: "SET_LOADING", loading: false });
           })
           .catch((err) => {
             // Even on error, still move focus
-            const next = applyFocus(gameState, { type: "FOCUS", target });
+            const next = applyFocus(gameState, { type: "FOCUS", target }, undefined, Date.now());
             dispatch({ type: "SET_GAME", game: next });
             dispatch({ type: "SET_ERROR", error: err.message });
           });
@@ -200,7 +200,7 @@ export function useGameState(): GameStateHook {
     }
 
     // No summarization needed — just move focus
-    const next = applyFocus(gameState, { type: "FOCUS", target });
+    const next = applyFocus(gameState, { type: "FOCUS", target }, undefined, Date.now());
     dispatch({ type: "SET_GAME", game: next });
   }, [state.game]);
 
@@ -216,7 +216,7 @@ export function useGameState(): GameStateHook {
       dispatch({ type: "SET_LOADING", loading: true });
       apiPost<ExamineInteractResult>("/api/examine", { gameState, message })
         .then((result) => {
-          const next = applyInteract(gameState, action, result);
+          const next = applyInteract(gameState, action, result, Date.now());
           dispatch({ type: "SET_GAME", game: next });
           dispatch({ type: "SET_LOADING", loading: false });
         })
@@ -271,7 +271,7 @@ export function useGameState(): GameStateHook {
           }
 
           const result: SpeakInteractResult = { context: "character", response: fullText, cluesRevealed };
-          const next = applyInteract(gameState, action, result);
+          const next = applyInteract(gameState, action, result, Date.now());
           dispatch({ type: "SET_GAME", game: next });
           dispatch({ type: "SET_STREAMING", text: null });
           dispatch({ type: "SET_LOADING", loading: false });
@@ -297,6 +297,7 @@ export function useGameState(): GameStateHook {
             gameState,
             { type: "SOLVE", answers, evidenceCited },
             result,
+            Date.now(),
           );
           dispatch({ type: "SET_GAME", game: next });
           dispatch({ type: "SET_LOADING", loading: false });
@@ -315,7 +316,7 @@ export function useGameState(): GameStateHook {
     dispatch({ type: "SET_LOADING", loading: true });
     apiPost<{ narrative: string }>("/api/give-up", { gameState })
       .then(() => {
-        const next = applyGiveUp(gameState, { type: "GIVE_UP" });
+        const next = applyGiveUp(gameState, { type: "GIVE_UP" }, undefined);
         dispatch({ type: "SET_GAME", game: next });
         dispatch({ type: "SET_LOADING", loading: false });
       })

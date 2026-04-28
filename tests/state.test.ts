@@ -130,7 +130,7 @@ describe("applyFocus", () => {
     const next = applyFocus(freshState(), {
       type: "FOCUS",
       target: { type: "location", id: "victors-office" },
-    });
+    }, undefined, 1000);
     expect(next.focus).toEqual({ type: "location", id: "victors-office" });
   });
 
@@ -138,7 +138,7 @@ describe("applyFocus", () => {
     const next = applyFocus(freshState(), {
       type: "FOCUS",
       target: { type: "character", id: "tommy" },
-    });
+    }, undefined, 1000);
     expect(next.focus).toEqual({ type: "character", id: "tommy" });
     expect(next.conversations).toHaveLength(1);
     expect(next.conversations[0]!.characterId).toBe("tommy");
@@ -148,15 +148,15 @@ describe("applyFocus", () => {
     let state = applyFocus(freshState(), {
       type: "FOCUS",
       target: { type: "character", id: "tommy" },
-    });
+    }, undefined, 1000);
     state = applyFocus(state, {
       type: "FOCUS",
       target: { type: "location", id: "main-floor" },
-    });
+    }, undefined, 2000);
     state = applyFocus(state, {
       type: "FOCUS",
       target: { type: "character", id: "tommy" },
-    });
+    }, undefined, 3000);
     expect(state.conversations).toHaveLength(1);
   });
 
@@ -164,13 +164,13 @@ describe("applyFocus", () => {
     let state = applyFocus(freshState(), {
       type: "FOCUS",
       target: { type: "character", id: "tommy" },
-    });
+    }, undefined, 1000);
     // Add a message so the conversation has content
     state = applyInteract(state, { type: "INTERACT", message: "Hello" }, {
       context: "character",
       response: "Evening.",
       cluesRevealed: [],
-    });
+    }, 2000);
     // Focus away with summary result
     state = applyFocus(
       state,
@@ -189,6 +189,7 @@ describe("applyFocus", () => {
           npcStateUpdates: { tommy: "nervous" },
         },
       },
+      3000,
     );
     expect(getConversation(state, "tommy")!.summaries).toHaveLength(1);
     expect(state.npcStates["tommy"]!.emotion).toBe("nervous");
@@ -197,7 +198,7 @@ describe("applyFocus", () => {
 
   it("does not mutate original state", () => {
     const state = freshState();
-    applyFocus(state, { type: "FOCUS", target: { type: "location", id: "victors-office" } });
+    applyFocus(state, { type: "FOCUS", target: { type: "location", id: "victors-office" } }, undefined, 1000);
     expect(state.focus.id).toBe("main-floor");
   });
 });
@@ -212,6 +213,7 @@ describe("applyInteract (location)", () => {
       freshState(),
       { type: "INTERACT", message: "the bar" },
       { context: "location", narrative: "A well-worn bar.", clueFound: null },
+      1000,
     );
     expect(next.explorations).toHaveLength(1);
     expect(next.explorations[0]!.clueFound).toBeNull();
@@ -222,11 +224,12 @@ describe("applyInteract (location)", () => {
     let state = applyFocus(freshState(), {
       type: "FOCUS",
       target: { type: "location", id: "victors-office" },
-    });
+    }, undefined, 1000);
     state = applyInteract(
       state,
       { type: "INTERACT", message: "the trash bin" },
       { context: "location", narrative: "A movie ticket stub.", clueFound: "clue-movie-stub" },
+      2000,
     );
     expect(discoveredClueIds(state).has("clue-movie-stub")).toBe(true);
     expect(discoveredClues(state)).toHaveLength(1);
@@ -236,11 +239,11 @@ describe("applyInteract (location)", () => {
     let state = freshState();
     state = applyInteract(state, { type: "INTERACT", message: "look" }, {
       context: "location", narrative: "...", clueFound: null,
-    });
-    state = applyFocus(state, { type: "FOCUS", target: { type: "location", id: "victors-office" } });
+    }, 1000);
+    state = applyFocus(state, { type: "FOCUS", target: { type: "location", id: "victors-office" } }, undefined, 2000);
     state = applyInteract(state, { type: "INTERACT", message: "look" }, {
       context: "location", narrative: "...", clueFound: null,
-    });
+    }, 3000);
     expect(visitedLocationIds(state).size).toBe(2);
   });
 });
@@ -254,11 +257,12 @@ describe("applyInteract (character)", () => {
     let state = applyFocus(freshState(), {
       type: "FOCUS",
       target: { type: "character", id: "tommy" },
-    });
+    }, undefined, 1000);
     state = applyInteract(
       state,
       { type: "INTERACT", message: "Where were you?" },
       { context: "character", response: "Behind the bar.", cluesRevealed: [] },
+      2000,
     );
     const convo = getConversation(state, "tommy");
     expect(convo!.messages).toHaveLength(2);
@@ -270,8 +274,8 @@ describe("applyInteract (character)", () => {
     let state = applyFocus(freshState(), {
       type: "FOCUS",
       target: { type: "character", id: "tommy" },
-    });
-    state = applyFocus(state, { type: "FOCUS", target: { type: "character", id: "marlene" } });
+    }, undefined, 1000);
+    state = applyFocus(state, { type: "FOCUS", target: { type: "character", id: "marlene" } }, undefined, 2000);
     expect(interviewedCharacterIds(state).size).toBe(2);
   });
 });
@@ -286,6 +290,7 @@ describe("applySolve", () => {
       freshState(),
       { type: "INTERACT", message: "look" },
       { context: "location", narrative: "...", clueFound: "clue-movie-stub" },
+      1000,
     );
   }
 
@@ -307,6 +312,7 @@ describe("applySolve", () => {
         npcStateChanges: { dolores: "defeated" },
         gameOver: true,
       },
+      2000,
     );
     expect(state.phase).toBe("solved");
     expect(state.theories).toHaveLength(1);
@@ -332,6 +338,7 @@ describe("applySolve", () => {
         npcStateChanges: {},
         gameOver: false,
       },
+      2000,
     );
     expect(state.phase).toBe("playing");
     expect(failedTheoryCount(state)).toBe(1);
@@ -344,7 +351,7 @@ describe("applySolve", () => {
 
 describe("applyGiveUp", () => {
   it("sets phase to revealed", () => {
-    const state = applyGiveUp(freshState(), { type: "GIVE_UP" });
+    const state = applyGiveUp(freshState(), { type: "GIVE_UP" }, undefined);
     expect(state.phase).toBe("revealed");
   });
 });

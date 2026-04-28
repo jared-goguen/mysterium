@@ -1,7 +1,8 @@
 /**
  * API routes — Hono catch-all for Cloudflare Pages Functions
  *
- * Five routes bridging the React UI to the AI engines:
+ * Six routes bridging the React UI to the AI engines:
+ *   POST /api/start      → Initialize game from mystery registry
  *   POST /api/examine    → Examiner (Haiku)
  *   POST /api/chat       → Conversant (Sonnet, SSE) + Clue Detector (Haiku)
  *   POST /api/summarize  → Summarizer (Haiku) — auto-called on FOCUS away from character
@@ -17,6 +18,9 @@ import { converse } from "../../lib/ai/engines/conversant";
 import { summarize } from "../../lib/ai/engines/summarizer";
 import { evaluate, giveUp } from "../../lib/ai/engines/judge";
 import { validateAction } from "../../lib/validators";
+import { createGameState } from "../../lib/initializers";
+import { stripMystery, stripGameState } from "../../types/client";
+import { getMystery } from "../mysteries";
 import type { GameState } from "../../types/state";
 
 type Env = {
@@ -26,6 +30,27 @@ type Env = {
 };
 
 const app = new Hono<Env>().basePath("/api");
+
+// ---------------------------------------------------------------------------
+// POST /api/start — initialize a new game from a mystery ID
+// ---------------------------------------------------------------------------
+
+app.post("/start", async (c) => {
+  const { mysteryId } = await c.req.json<{
+    mysteryId: string;
+  }>();
+
+  const mystery = getMystery(mysteryId);
+  if (!mystery) {
+    return c.json({ error: `Unknown mystery: ${mysteryId}` }, 404);
+  }
+
+  const initialState = createGameState(mystery);
+  return c.json({
+    clientMystery: stripMystery(mystery),
+    state: stripGameState(initialState),
+  });
+});
 
 // ---------------------------------------------------------------------------
 // POST /api/examine — location examination
