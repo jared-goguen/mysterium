@@ -10,6 +10,7 @@ import type { Mystery } from "../types/mystery";
 import type { MysteryListItem } from "../types/client";
 import { stripToListItem } from "../types/client";
 import blueParrot from "../examples/blue-parrot";
+import crystalCourt from "../examples/crystal-court";
 
 // ---------------------------------------------------------------------------
 // Backing store (swap to KV later)
@@ -41,3 +42,4 @@ export function registerMystery(mystery: Mystery): void {
 // ---------------------------------------------------------------------------
 
 registerMystery(blueParrot);
+registerMystery(crystalCourt);
