@@ -67,6 +67,13 @@ else
   FAIL=$((FAIL + 1))
 fi
 
+# 6. Focus endpoint — navigate without AI call
+STATE=$(curl -s -X POST "$BASE/api/start" \
+  -H "Content-Type: application/json" \
+  -d '{"mysteryId":"blue-parrot-001"}' | python3 -c "import sys,json; print(json.dumps(json.load(sys.stdin)['state']))")
+check "POST /api/focus (navigate)" "$BASE/api/focus" POST \
+  "{\"mysteryId\":\"blue-parrot-001\",\"state\":$STATE,\"target\":{\"type\":\"location\",\"id\":\"main-floor\"}}"
+
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
 [[ "$FAIL" -eq 0 ]]

@@ -1,9 +1,11 @@
 /**
  * useGameState.ts — Real game state hook backed by AI engines
  *
- * Four actions: focus, interact, solve, giveUp.
- * FOCUS auto-summarizes when leaving a character.
- * INTERACT dispatches to /api/examine or /api/chat based on focus context.
+ * Four actions mirroring the API:
+ *   focus(target)    → POST /api/focus (server auto-summarizes)
+ *   interact(message) → POST /api/interact (always SSE, server routes by focus)
+ *   solve(...)       → POST /api/solve
+ *   giveUp()        → POST /api/give-up
  *
  * Client stores ClientGameState (no sensitive mystery data).
  * API calls send mysteryId + client state; server reconstructs full state.
@@ -29,12 +31,10 @@ import {
   clientVisitedLocationIds,
   clientInterviewedCharacterIds,
   clientInvestigationProgress,
-  clientGetConversation,
 } from "../../types/client";
 import type {
   FocusResult,
-  ExamineInteractResult,
-  SpeakInteractResult,
+  InteractResult,
   SolveResult,
   FocusTarget,
 } from "../../types/actions";
@@ -113,28 +113,67 @@ async function apiPost<T>(url: string, body: unknown): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-/**
- * Build the API request body for game routes.
- * Sends mysteryId + full client state (server extracts what it needs).
- */
 function apiBody(game: ClientGameState, extra?: Record<string, unknown>) {
   return { mysteryId: game.mystery.id, state: game, ...extra };
 }
 
 /**
  * Cast ClientGameState to GameState for the pure reducer functions.
- *
- * Safe because the reducer apply* functions never access state.mystery —
- * they only touch mutable fields (explorations, conversations, theories,
- * npcStates, focus, phase). The mystery field passes through unchanged.
+ * Safe because reducers never access state.mystery fields.
  */
 function asGameState(client: ClientGameState): GameState {
   return client as unknown as GameState;
 }
 
-/** Cast reducer output back to ClientGameState. */
 function asClientState(game: GameState): ClientGameState {
   return game as unknown as ClientGameState;
+}
+
+/**
+ * Read an SSE stream, calling onDelta for each text chunk and
+ * returning the parsed "done" event payload.
+ */
+async function readSSE<T>(
+  res: Response,
+  onDelta?: (text: string) => void,
+): Promise<T> {
+  if (!res.ok || !res.body) {
+    const err = await res.json().catch(() => ({ error: res.statusText })) as { error?: string };
+    throw new Error(err.error ?? `API error: ${res.status}`);
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let result: T | undefined;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+
+    let eventType = "";
+    for (const line of lines) {
+      if (line.startsWith("event: ")) {
+        eventType = line.slice(7);
+      } else if (line.startsWith("data: ")) {
+        const data = JSON.parse(line.slice(6));
+        if (eventType === "delta") {
+          onDelta?.(data.text);
+        } else if (eventType === "done") {
+          result = data as T;
+        } else if (eventType === "error") {
+          throw new Error(data.message ?? data.error ?? "Unknown SSE error");
+        }
+      }
+    }
+  }
+
+  if (!result) throw new Error("SSE stream ended without a done event");
+  return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -177,7 +216,6 @@ export function useGameState(): GameStateHook {
   useEffect(() => { persistState(state); }, [state.game, state.notes]);
 
   // -- Start game --
-  // Calls /api/start to get ClientMystery + initial ClientGameState from the server.
 
   const startGame = useCallback((mysteryId: string) => {
     sessionStorage.removeItem(STORAGE_KEY);
@@ -193,123 +231,76 @@ export function useGameState(): GameStateHook {
   }, []);
 
   // -- Focus (navigate) --
-  // If leaving a character with messages, auto-summarize first.
+  // Server handles summarization automatically.
 
   const doFocus = useCallback((target: FocusTarget) => {
     if (!state.game) return;
     const game = state.game;
 
-    // Check if we're leaving a character with messages
+    // If we might need summarization (leaving a character), ask the server
     const leavingCharacter =
       game.focus.type === "character" &&
       (target.type !== "character" || target.id !== game.focus.id);
 
     if (leavingCharacter) {
-      const characterId = game.focus.id;
-      const conversation = clientGetConversation(game, characterId);
-      const hasMessages = conversation && conversation.messages.length > 0;
-      const lastSummaryCount = conversation?.summaries.length ?? 0;
-      const needsSummary = hasMessages && conversation.messages.length > lastSummaryCount * 2;
-
-      if (needsSummary) {
-        dispatch({ type: "SET_LOADING", loading: true });
-        apiPost<FocusResult["conversationEnded"]>("/api/summarize", apiBody(game, { characterId }))
-          .then((conversationEnded) => {
-            const focusResult: FocusResult = { conversationEnded: conversationEnded ?? undefined };
-            const next = applyFocus(asGameState(game), { type: "FOCUS", target }, focusResult, Date.now());
-            dispatch({ type: "SET_GAME", game: asClientState(next) });
-            dispatch({ type: "SET_LOADING", loading: false });
-          })
-          .catch((err) => {
-            const next = applyFocus(asGameState(game), { type: "FOCUS", target }, undefined, Date.now());
-            dispatch({ type: "SET_GAME", game: asClientState(next) });
-            dispatch({ type: "SET_ERROR", error: err.message });
-          });
-        return;
-      }
+      dispatch({ type: "SET_LOADING", loading: true });
+      apiPost<{ focusResult: FocusResult }>("/api/focus", apiBody(game, { target }))
+        .then(({ focusResult }) => {
+          const next = applyFocus(asGameState(game), { type: "FOCUS", target }, focusResult, Date.now());
+          dispatch({ type: "SET_GAME", game: asClientState(next) });
+          dispatch({ type: "SET_LOADING", loading: false });
+        })
+        .catch((err) => {
+          // On error, still apply the focus change (just without summarization)
+          const next = applyFocus(asGameState(game), { type: "FOCUS", target }, undefined, Date.now());
+          dispatch({ type: "SET_GAME", game: asClientState(next) });
+          dispatch({ type: "SET_ERROR", error: err.message });
+        });
+      return;
     }
 
+    // Simple navigation — no server call needed
     const next = applyFocus(asGameState(game), { type: "FOCUS", target }, undefined, Date.now());
     dispatch({ type: "SET_GAME", game: asClientState(next) });
   }, [state.game]);
 
-  // -- Interact (examine or speak) --
+  // -- Interact --
+  // Always SSE. Server routes to examine or converse based on focus.
 
   const interact = useCallback((message: string) => {
     if (!state.game) return;
     const game = state.game;
     const action = { type: "INTERACT" as const, message };
 
-    if (game.focus.type === "location") {
-      // Examine — non-streaming
-      dispatch({ type: "SET_LOADING", loading: true });
-      apiPost<ExamineInteractResult>("/api/examine", apiBody(game, { message }))
-        .then((result) => {
-          const next = applyInteract(asGameState(game), action, result, Date.now());
-          dispatch({ type: "SET_GAME", game: asClientState(next) });
-          dispatch({ type: "SET_LOADING", loading: false });
-        })
-        .catch((err) => dispatch({ type: "SET_ERROR", error: err.message }));
-    } else {
-      // Speak — SSE streaming
-      dispatch({ type: "SET_LOADING", loading: true });
+    dispatch({ type: "SET_LOADING", loading: true });
+    // Show streaming indicator for character conversations
+    if (game.focus.type === "character") {
       dispatch({ type: "SET_STREAMING", text: "" });
-
-      fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(apiBody(game, { message })),
-      })
-        .then(async (res) => {
-          if (!res.ok || !res.body) {
-            const err = await res.json().catch(() => ({ error: res.statusText })) as { error?: string };
-            throw new Error(err.error ?? `API error: ${res.status}`);
-          }
-
-          const reader = res.body.getReader();
-          const decoder = new TextDecoder();
-          let fullText = "";
-          let cluesRevealed: string[] = [];
-          let buffer = "";
-
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split("\n");
-            buffer = lines.pop() ?? "";
-
-            let eventType = "";
-            for (const line of lines) {
-              if (line.startsWith("event: ")) {
-                eventType = line.slice(7);
-              } else if (line.startsWith("data: ")) {
-                const data = JSON.parse(line.slice(6));
-                if (eventType === "delta") {
-                  fullText += data.text;
-                  dispatch({ type: "SET_STREAMING", text: fullText });
-                } else if (eventType === "done") {
-                  fullText = data.response;
-                  cluesRevealed = data.cluesRevealed ?? [];
-                } else if (eventType === "error") {
-                  throw new Error(data.message);
-                }
-              }
-            }
-          }
-
-          const result: SpeakInteractResult = { context: "character", response: fullText, cluesRevealed };
-          const next = applyInteract(asGameState(game), action, result, Date.now());
-          dispatch({ type: "SET_GAME", game: asClientState(next) });
-          dispatch({ type: "SET_STREAMING", text: null });
-          dispatch({ type: "SET_LOADING", loading: false });
-        })
-        .catch((err) => {
-          dispatch({ type: "SET_STREAMING", text: null });
-          dispatch({ type: "SET_ERROR", error: err.message });
-        });
     }
+
+    let fullText = "";
+
+    fetch("/api/interact", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(apiBody(game, { message })),
+    })
+      .then((res) =>
+        readSSE<InteractResult>(res, (delta) => {
+          fullText += delta;
+          dispatch({ type: "SET_STREAMING", text: fullText });
+        }),
+      )
+      .then((result) => {
+        const next = applyInteract(asGameState(game), action, result, Date.now());
+        dispatch({ type: "SET_GAME", game: asClientState(next) });
+        dispatch({ type: "SET_STREAMING", text: null });
+        dispatch({ type: "SET_LOADING", loading: false });
+      })
+      .catch((err) => {
+        dispatch({ type: "SET_STREAMING", text: null });
+        dispatch({ type: "SET_ERROR", error: err.message });
+      });
   }, [state.game]);
 
   // -- Solve --
@@ -358,7 +349,7 @@ export function useGameState(): GameStateHook {
     dispatch({ type: "UPDATE_NOTES", text });
   }, []);
 
-  // -- Derived state (uses client-side functions) --
+  // -- Derived state --
 
   const derived = useMemo(() => {
     if (!state.game) {
@@ -375,7 +366,6 @@ export function useGameState(): GameStateHook {
       visitedLocations: clientVisitedLocationIds(state.game),
       interviewedCharacters: clientInterviewedCharacterIds(state.game),
       progress: clientInvestigationProgress(state.game),
-      // deriveEventLog only accesses explorations, conversations, theories — safe with client state
       eventLog: deriveEventLog(state.game as unknown as GameState),
     };
   }, [state.game]);

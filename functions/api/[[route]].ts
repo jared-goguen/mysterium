@@ -1,13 +1,16 @@
 /**
  * API routes — Hono catch-all for Cloudflare Pages Functions
  *
- * Six routes bridging the React UI to the AI engines:
+ * Four game endpoints mirroring the action model:
  *   POST /api/start      → Initialize game from mystery registry
- *   POST /api/examine    → Examiner (Haiku)
- *   POST /api/chat       → Conversant (Sonnet, SSE) + Clue Detector (Haiku)
- *   POST /api/summarize  → Summarizer (Haiku) — auto-called on FOCUS away from character
- *   POST /api/solve      → Judge (Sonnet) — timeline reconstruction evaluation
- *   POST /api/give-up    → Judge (Sonnet) — reveal solution
+ *   POST /api/focus      → Navigate — server auto-summarizes when leaving a character
+ *   POST /api/interact   → Context-dependent — server routes to examine or converse (always SSE)
+ *   POST /api/solve      → Judge — timeline reconstruction evaluation
+ *   POST /api/give-up    → Judge — reveal solution
+ *
+ * Plus infrastructure:
+ *   GET  /api/health     → Runtime validation (no AI calls)
+ *   GET  /api/mysteries  → Mystery catalog
  */
 
 import { Hono } from "hono";
@@ -23,10 +26,12 @@ import {
   stripMystery,
   stripGameState,
   reconstructGameState,
+  clientGetConversation,
 } from "../../types/client";
 import { getMystery, listMysteries } from "../mysteries";
 import type { ClientGameState } from "../../types/client";
 import type { GameState } from "../../types/state";
+import type { FocusResult, InteractResult } from "../../types/actions";
 
 type Env = {
   Bindings: {
@@ -46,7 +51,6 @@ app.onError((err, c) => {
   return c.json(
     {
       error: err.message,
-      // Include stack in non-production (preview deployments)
       ...(c.env.ENVIRONMENT !== "production" && { stack: err.stack }),
     },
     500,
@@ -61,8 +65,6 @@ app.get("/health", (c) => {
   const mysteries = listMysteries();
   const hasApiKey = Boolean(c.env.ANTHROPIC_API_KEY);
 
-  // Exercise the full pipeline minus AI: pick the first mystery,
-  // create initial state, strip it, reconstruct it.
   const first = mysteries[0];
   let pipelineOk = false;
   let pipelineError: string | null = null;
@@ -93,11 +95,6 @@ app.get("/health", (c) => {
 // Helper: reconstruct full GameState from client payload
 // ---------------------------------------------------------------------------
 
-/**
- * Parse { mysteryId, state } from the request body and reconstruct
- * the full GameState by looking up the mystery from the server registry.
- * Returns the full GameState or a 400/404 error response.
- */
 function resolveGameState(
   mysteryId: string,
   clientState: ClientGameState,
@@ -116,6 +113,44 @@ function isError(
   result: GameState | { error: string; status: 400 | 404 },
 ): result is { error: string; status: 400 | 404 } {
   return "error" in result && "status" in result;
+}
+
+// ---------------------------------------------------------------------------
+// SSE helpers
+// ---------------------------------------------------------------------------
+
+function sseResponse(
+  handler: (send: (event: string, data: unknown) => void) => Promise<void>,
+): Response {
+  const stream = new ReadableStream({
+    async start(controller) {
+      const encoder = new TextEncoder();
+
+      function send(event: string, data: unknown) {
+        controller.enqueue(
+          encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`),
+        );
+      }
+
+      try {
+        await handler(send);
+      } catch (err) {
+        send("error", {
+          message: err instanceof Error ? err.message : "Unknown error",
+        });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    },
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -148,10 +183,69 @@ app.post("/start", async (c) => {
 });
 
 // ---------------------------------------------------------------------------
-// POST /api/examine — location examination
+// POST /api/focus — navigate to a location or character
+//
+// Server handles summarization automatically when leaving a character
+// with unsummarized messages. Client just says where to go.
 // ---------------------------------------------------------------------------
 
-app.post("/examine", async (c) => {
+app.post("/focus", async (c) => {
+  const { mysteryId, state, target } = await c.req.json<{
+    mysteryId: string;
+    state: ClientGameState;
+    target: { type: "location" | "character"; id: string };
+  }>();
+
+  const resolved = resolveGameState(mysteryId, state);
+  if (isError(resolved)) {
+    return c.json({ error: resolved.error }, resolved.status);
+  }
+  const gameState = resolved;
+
+  const action = { type: "FOCUS" as const, target };
+  const validation = validateAction(gameState, action);
+  if (!validation.valid) {
+    return c.json({ error: validation.reason }, 400);
+  }
+
+  // Check if we're leaving a character that needs summarization
+  let focusResult: FocusResult = {};
+
+  const leavingCharacter =
+    gameState.focus.type === "character" &&
+    (target.type !== "character" || target.id !== gameState.focus.id);
+
+  if (leavingCharacter) {
+    const characterId = gameState.focus.id;
+    const conversation = clientGetConversation(state, characterId);
+    const hasMessages = conversation && conversation.messages.length > 0;
+    const lastSummaryCount = conversation?.summaries.length ?? 0;
+    const needsSummary =
+      hasMessages && conversation.messages.length > lastSummaryCount * 2;
+
+    if (needsSummary) {
+      const client = createClient(c.env.ANTHROPIC_API_KEY);
+      const conversationEnded = await summarize(
+        client,
+        gameState,
+        characterId,
+      );
+      focusResult = { conversationEnded };
+    }
+  }
+
+  return c.json({ focusResult });
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/interact — context-dependent action (always SSE)
+//
+// Server checks focus type:
+//   location  → examine engine → single "done" event
+//   character → converse engine → "delta" events + "done" event
+// ---------------------------------------------------------------------------
+
+app.post("/interact", async (c) => {
   const { mysteryId, state, message } = await c.req.json<{
     mysteryId: string;
     state: ClientGameState;
@@ -171,93 +265,22 @@ app.post("/examine", async (c) => {
   }
 
   const client = createClient(c.env.ANTHROPIC_API_KEY);
-  const result = await examine(client, gameState, action);
-  return c.json(result);
-});
 
-// ---------------------------------------------------------------------------
-// POST /api/chat — NPC conversation (SSE streaming)
-// ---------------------------------------------------------------------------
-
-app.post("/chat", async (c) => {
-  const { mysteryId, state, message } = await c.req.json<{
-    mysteryId: string;
-    state: ClientGameState;
-    message: string;
-  }>();
-
-  const resolved = resolveGameState(mysteryId, state);
-  if (isError(resolved)) {
-    return c.json({ error: resolved.error }, resolved.status);
+  if (gameState.focus.type === "location") {
+    // Examination — call engine, return as single SSE "done" event
+    return sseResponse(async (send) => {
+      const result = await examine(client, gameState, action);
+      send("done", result);
+    });
+  } else {
+    // Conversation — stream deltas, then "done" with full result
+    return sseResponse(async (send) => {
+      const result = await converse(client, gameState, action, (delta) => {
+        send("delta", { text: delta });
+      });
+      send("done", result);
+    });
   }
-  const gameState = resolved;
-
-  const action = { type: "INTERACT" as const, message };
-  const validation = validateAction(gameState, action);
-  if (!validation.valid) {
-    return c.json({ error: validation.reason }, 400);
-  }
-
-  const client = createClient(c.env.ANTHROPIC_API_KEY);
-
-  const stream = new ReadableStream({
-    async start(controller) {
-      const encoder = new TextEncoder();
-
-      function sendEvent(event: string, data: unknown) {
-        controller.enqueue(
-          encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`),
-        );
-      }
-
-      try {
-        const result = await converse(client, gameState, action, (delta) => {
-          sendEvent("delta", { text: delta });
-        });
-
-        sendEvent("done", {
-          response: result.response,
-          cluesRevealed: result.cluesRevealed,
-        });
-      } catch (err) {
-        sendEvent("error", {
-          message: err instanceof Error ? err.message : "Unknown error",
-        });
-      } finally {
-        controller.close();
-      }
-    },
-  });
-
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-    },
-  });
-});
-
-// ---------------------------------------------------------------------------
-// POST /api/summarize — conversation summarization (auto on FOCUS away)
-// ---------------------------------------------------------------------------
-
-app.post("/summarize", async (c) => {
-  const { mysteryId, state, characterId } = await c.req.json<{
-    mysteryId: string;
-    state: ClientGameState;
-    characterId: string;
-  }>();
-
-  const resolved = resolveGameState(mysteryId, state);
-  if (isError(resolved)) {
-    return c.json({ error: resolved.error }, resolved.status);
-  }
-  const gameState = resolved;
-
-  const client = createClient(c.env.ANTHROPIC_API_KEY);
-  const result = await summarize(client, gameState, characterId);
-  return c.json(result);
 });
 
 // ---------------------------------------------------------------------------
