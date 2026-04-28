@@ -71,21 +71,21 @@ export function LocationView({
   return (
     <div className="flex h-full flex-col">
       {/* Atmospheric description — the main visual element */}
-      <div className="px-6 py-5">
-        <NarrativeText text={location.description} />
+      <div className="px-6 py-6">
+        <NarrativeText text={location.description} className="drop-cap" />
       </div>
 
       {/* Available examinables — subtle hints for the player */}
       {availableExaminables.length > 0 && (
         <div className="border-t border-[var(--border-subtle)] px-6 py-3">
-          <span className="text-xs uppercase tracking-wider text-[var(--text-muted)]">
+          <span className="noir-header">
             You notice:{" "}
           </span>
           {availableExaminables.map((ex, i) => (
             <span key={ex.id}>
               <button
                 onClick={() => onExamine(ex.name)}
-                className="text-sm text-[var(--text-secondary)] underline decoration-dotted underline-offset-2 hover:text-[var(--text-primary)] transition-colors"
+                className="text-sm italic text-[var(--text-secondary)] underline decoration-dotted underline-offset-2 hover:text-[var(--text-primary)] hover:decoration-solid transition-colors"
                 title={ex.surfaceDetail}
               >
                 {ex.name}
@@ -101,7 +101,7 @@ export function LocationView({
       {/* Characters present */}
       {charactersPresent.length > 0 && (
         <div className="border-t border-[var(--border-subtle)] px-6 py-3">
-          <span className="text-xs uppercase tracking-wider text-[var(--text-muted)]">
+          <span className="noir-header">
             Characters present:{" "}
           </span>
           {charactersPresent.map((char, i) => (
@@ -130,7 +130,10 @@ export function LocationView({
           <div className="space-y-4">
             {examineHistory.map((result, i) => (
               <div key={i} className="space-y-2">
-                <p className="text-xs uppercase tracking-wider text-[var(--text-muted)]">
+                {i > 0 && (
+                  <div className="border-t border-[var(--border-subtle)] pt-4" />
+                )}
+                <p className="noir-header">
                   &rsaquo; {result.query}
                 </p>
                 <NarrativeText
@@ -138,10 +141,10 @@ export function LocationView({
                   className={result.clueFound ? "narrative-clue-found" : ""}
                 />
                 {result.clueFound && (
-                  <div className="mt-2 flex items-center gap-2 rounded bg-amber-950/30 px-3 py-2">
+                  <div className="gold-border-left gold-glow mt-2 flex items-center gap-2 rounded bg-amber-950/30 px-3 py-2">
                     <span className="text-amber-400">✦</span>
-                    <span className="text-xs font-medium text-[var(--accent-clue)]">
-                      Clue discovered
+                    <span className="text-xs font-semibold tracking-wide text-[var(--accent-clue)]">
+                      ✦ Clue discovered
                     </span>
                   </div>
                 )}
@@ -160,13 +163,13 @@ export function LocationView({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="What do you want to examine?"
-            className="flex-1 rounded bg-[var(--bg-input)] px-3 py-2 font-mono text-sm text-[var(--text-primary)] placeholder-neutral-600 outline-none focus:ring-1 focus:ring-neutral-600"
+            placeholder="What catches your eye?"
+            className="flex-1 rounded bg-[var(--bg-input)] px-3 py-2 font-mono text-sm text-[var(--text-primary)] placeholder-neutral-600 outline-none focus:ring-1 focus:ring-[var(--accent-clue)]/50"
           />
           <button
             type="submit"
             disabled={!query.trim()}
-            className="rounded bg-neutral-700 px-4 py-2 text-sm text-[var(--text-primary)] transition-colors hover:bg-neutral-600 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded bg-[var(--bg-surface)] px-4 py-2 text-sm text-[var(--text-primary)] transition-colors hover:bg-[var(--border-warm)] disabled:cursor-not-allowed disabled:opacity-40"
           >
             Examine
           </button>
@@ -176,12 +179,12 @@ export function LocationView({
       {/* Discovered clues at this location */}
       {cluesHere.length > 0 && (
         <div className="border-t border-[var(--border-subtle)] bg-neutral-900/50 px-6 py-3">
-          <p className="mb-2 text-xs uppercase tracking-wider text-[var(--accent-clue)] opacity-75">
+          <p className="noir-header mb-2 text-[var(--accent-clue)] opacity-90">
             ✦ Evidence found here
           </p>
           <ul className="space-y-1">
             {cluesHere.map((clue) => (
-              <li key={clue.id} className="text-sm text-[var(--accent-clue)]">
+              <li key={clue.id} className="text-sm text-[var(--accent-clue)] opacity-90">
                 {clue.description}
               </li>
             ))}

@@ -182,7 +182,7 @@ export function ChatPanel({
             {/* Pending player message (sent but not yet in history) */}
             {pendingMessage && (
               <div className="flex justify-end">
-                <div className="max-w-[70%] rounded-lg bg-blue-950/80 px-4 py-2.5 text-sm leading-relaxed text-blue-100">
+                <div className="max-w-[70%] rounded-lg bg-stone-900/80 px-4 py-2.5 text-sm leading-relaxed text-[var(--text-primary)]">
                   {pendingMessage}
                 </div>
               </div>
@@ -190,18 +190,18 @@ export function ChatPanel({
 
             {/* Streaming response */}
             {streamingText !== null && (
-              <div className="npc-message">
+              <div className="npc-message border-l-[3px] border-[var(--accent-clue)]/30 pl-3">
                 <div className="mb-1.5 flex items-center gap-2">
-                  <span className="text-xs font-medium uppercase tracking-wider text-[var(--text-muted)]">
+                  <span className="noir-header text-xs text-[var(--text-muted)]">
                     {firstName}
                   </span>
-                  <div className="h-px flex-1 bg-neutral-800" />
+                  <div className="h-px flex-1 bg-[var(--border-warm)]" />
                 </div>
                 <div className="pl-1">
                   {streamingText ? (
                     <NarrativeText text={streamingText} />
                   ) : (
-                    <p className="narrative animate-pulse text-[var(--text-muted)]">…</p>
+                    <p className="narrative animate-pulse text-[var(--accent-clue)]">…</p>
                   )}
                 </div>
               </div>
@@ -213,7 +213,7 @@ export function ChatPanel({
       </div>
 
       {/* Input area */}
-      <div className="border-t border-[var(--border-subtle)] bg-neutral-900 px-5 py-3">
+      <div className="border-t border-[var(--border-subtle)] bg-[var(--bg-panel)] px-5 py-3">
         <div className="flex gap-2">
           <input
             type="text"
@@ -221,17 +221,17 @@ export function ChatPanel({
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={`Ask ${firstName} something...`}
-            className="flex-1 rounded bg-[var(--bg-input)] px-3 py-2 font-mono text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none ring-1 ring-transparent transition-all focus:ring-amber-700"
+            className="flex-1 rounded bg-[var(--bg-input)] px-3 py-2 font-mono text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none ring-1 ring-transparent transition-all focus:ring-[var(--accent-clue)]/50"
           />
           <button
             onClick={handleSend}
             disabled={!input.trim() || loading}
-            className="rounded bg-neutral-700 px-4 py-2 text-sm font-medium text-[var(--text-primary)] transition-colors hover:bg-neutral-600 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded bg-[var(--bg-surface)] px-4 py-2 text-sm font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--border-warm)] disabled:cursor-not-allowed disabled:opacity-40"
           >
             Send
           </button>
         </div>
-        <p className="mt-1.5 text-xs italic text-[var(--text-muted)]">
+        <p className="mt-1.5 text-xs italic text-[var(--text-muted)]" style={{ fontFamily: "Georgia, serif" }}>
           {character.speechPattern}
         </p>
       </div>
