@@ -153,24 +153,24 @@ export function ChatPanel({
               const isPlayer = msg.role === "player";
 
               if (isPlayer) {
-                // Player: right-aligned bubble
+                // Player: right-aligned warm muted bubble
                 return (
                   <div key={i} className="flex justify-end">
-                    <div className="max-w-[70%] rounded-lg bg-blue-950/80 px-4 py-2.5 text-sm leading-relaxed text-blue-100">
+                    <div className="max-w-[70%] rounded-lg bg-stone-900/80 px-4 py-2.5 text-sm leading-relaxed text-[var(--text-primary)]">
                       {msg.content}
                     </div>
                   </div>
                 );
               }
 
-              // NPC: full-width narrative block
+              // NPC: full-width narrative block with warm left border
               return (
-                <div key={i} className="npc-message">
+                <div key={i} className="npc-message border-l-[3px] border-[var(--accent-clue)]/30 pl-3">
                   <div className="mb-1.5 flex items-center gap-2">
-                    <span className="text-xs font-medium uppercase tracking-wider text-[var(--text-muted)]">
+                    <span className="noir-header text-xs text-[var(--text-muted)]">
                       {firstName}
                     </span>
-                    <div className="h-px flex-1 bg-neutral-800" />
+                    <div className="h-px flex-1 bg-[var(--border-warm)]" />
                   </div>
                   <div className="pl-1">
                     <NarrativeText text={msg.content} />
