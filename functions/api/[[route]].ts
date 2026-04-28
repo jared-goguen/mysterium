@@ -24,7 +24,7 @@ import {
   stripGameState,
   reconstructGameState,
 } from "../../types/client";
-import { getMystery } from "../mysteries";
+import { getMystery, listMysteries } from "../mysteries";
 import type { ClientGameState } from "../../types/client";
 import type { GameState } from "../../types/state";
 
@@ -64,6 +64,14 @@ function isError(
 ): result is { error: string; status: 400 | 404 } {
   return "error" in result && "status" in result;
 }
+
+// ---------------------------------------------------------------------------
+// GET /api/mysteries — list all available mysteries
+// ---------------------------------------------------------------------------
+
+app.get("/mysteries", (c) => {
+  return c.json(listMysteries());
+});
 
 // ---------------------------------------------------------------------------
 // POST /api/start — initialize a new game from a mystery ID

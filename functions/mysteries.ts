@@ -3,10 +3,12 @@
  *
  * In-memory Map<string, Mystery> populated at module load.
  * Designed so the backing store can be swapped to KV later —
- * callers only use getMystery() and registerMystery().
+ * callers only use getMystery(), listMysteries(), and registerMystery().
  */
 
 import type { Mystery } from "../types/mystery";
+import type { MysteryListItem } from "../types/client";
+import { stripToListItem } from "../types/client";
 import blueParrot from "../examples/blue-parrot";
 
 // ---------------------------------------------------------------------------
@@ -22,6 +24,11 @@ const store = new Map<string, Mystery>();
 /** Retrieve a mystery by ID. Returns null if not found. */
 export function getMystery(id: string): Mystery | null {
   return store.get(id) ?? null;
+}
+
+/** List all registered mysteries as lightweight list items. */
+export function listMysteries(): MysteryListItem[] {
+  return Array.from(store.values()).map(stripToListItem);
 }
 
 /** Register a mystery. Uses mystery.id as the key. */
