@@ -59,7 +59,7 @@ export function GameBoard({ game }: GameBoardProps) {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-[var(--bg-primary)]">
+    <div className="vignette flex h-screen flex-col bg-[var(--bg-primary)]">
       {game.error && (
         <div className="shrink-0 bg-red-950/80 px-4 py-2 text-xs text-red-300">
           ⚠️ {game.error}
@@ -67,8 +67,19 @@ export function GameBoard({ game }: GameBoardProps) {
       )}
 
       <div className="flex min-h-0 flex-1">
-        <div className="w-72 shrink-0 border-r border-[var(--border-subtle)]">
-          <EventLog eventLog={game.eventLog} />
+        <div className="w-[280px] shrink-0">
+          <NavBar
+            mystery={mystery}
+            focus={gameState.focus}
+            visitedLocations={game.visitedLocations}
+            interviewedCharacters={game.interviewedCharacters}
+            discoveredClues={game.discoveredClues}
+            npcStates={gameState.npcStates}
+            onMoveTo={handleFocusLocation}
+            onTalkTo={handleFocusCharacter}
+            onSolve={() => setSolutionOpen(true)}
+            onGiveUp={game.giveUp}
+          />
         </div>
 
         <MainPanel
@@ -93,21 +104,12 @@ export function GameBoard({ game }: GameBoardProps) {
           }}
         />
 
-        <NotesPanel notes={game.notes} onUpdateNotes={game.updateNotes} />
+        <div className="w-[260px] shrink-0 border-l border-[var(--border-subtle)]">
+          <EventLog eventLog={game.eventLog} />
+        </div>
       </div>
 
-      <NavBar
-        mystery={mystery}
-        focus={gameState.focus}
-        visitedLocations={game.visitedLocations}
-        interviewedCharacters={game.interviewedCharacters}
-        discoveredClues={game.discoveredClues}
-        npcStates={gameState.npcStates}
-        onMoveTo={handleFocusLocation}
-        onTalkTo={handleFocusCharacter}
-        onSolve={() => setSolutionOpen(true)}
-        onGiveUp={game.giveUp}
-      />
+      <NotesPanel notes={game.notes} onUpdateNotes={game.updateNotes} />
 
       {solutionOpen && (
         <SolutionModal
