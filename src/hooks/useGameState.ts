@@ -155,7 +155,7 @@ export interface GameStateHook {
   loading: boolean;
   error: string | null;
 
-  startGame: () => void;
+  startGame: (mysteryId: string) => void;
   focus: (target: FocusTarget) => void;
   interact: (message: string) => void;
   solve: (answers: Record<string, string>, evidenceCited: string[]) => void;
@@ -166,8 +166,6 @@ export interface GameStateHook {
 // ---------------------------------------------------------------------------
 // The hook
 // ---------------------------------------------------------------------------
-
-const DEFAULT_MYSTERY_ID = "blue-parrot-001";
 
 export function useGameState(): GameStateHook {
   const initial: HookState = loadPersistedState() ?? {
@@ -181,11 +179,11 @@ export function useGameState(): GameStateHook {
   // -- Start game --
   // Calls /api/start to get ClientMystery + initial ClientGameState from the server.
 
-  const startGame = useCallback(() => {
+  const startGame = useCallback((mysteryId: string) => {
     sessionStorage.removeItem(STORAGE_KEY);
     dispatch({ type: "SET_LOADING", loading: true });
     apiPost<{ clientMystery: ClientMystery; state: ClientGameState }>("/api/start", {
-      mysteryId: DEFAULT_MYSTERY_ID,
+      mysteryId,
     })
       .then(({ state: initialState }) => {
         dispatch({ type: "SET_GAME", game: initialState });

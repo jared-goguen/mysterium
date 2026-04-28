@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { useGameState } from "./hooks/useGameState";
 import { GameBoard } from "./components/GameBoard";
+import { MysterySelect } from "./components/MysterySelect";
 
 function LandingPage({ onStart }: { onStart: () => void }) {
   return (
@@ -12,20 +14,9 @@ function LandingPage({ onStart }: { onStart: () => void }) {
       </p>
 
       <div className="mb-10 w-full max-w-md rounded border border-[var(--border-subtle)] bg-[var(--bg-panel)] p-6">
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-[var(--accent-clue)]">
-          Case Briefing
-        </h2>
-        <p className="mb-4 text-sm leading-relaxed text-[var(--text-primary)]">
-          A body has been discovered at The Blue Parrot, a smoky jazz club in
-          1947 Los Angeles. The victim: club owner{" "}
-          <span className="font-medium text-[var(--accent-clue)]">
-            Victor Morel
-          </span>
-          . Cyanide in his whiskey. Five suspects, each hiding something. One truth.
-        </p>
         <ul className="space-y-1.5 text-xs text-[var(--text-muted)]">
           <li>📍 Explore locations and examine evidence</li>
-          <li>💬 Interrogate suspects — they lie, deflect, and remember</li>
+          <li>💬 Talk to characters — they remember what you say</li>
           <li>📓 Keep notes — nobody will do it for you</li>
           <li>🔍 Reconstruct the timeline when you&apos;re ready</li>
         </ul>
@@ -77,6 +68,16 @@ function EndScreen({
 
 export function App() {
   const game = useGameState();
+  const [selecting, setSelecting] = useState(false);
+
+  const handlePlayAgain = () => {
+    setSelecting(true);
+  };
+
+  const handleSelectMystery = (mysteryId: string) => {
+    setSelecting(false);
+    game.startGame(mysteryId);
+  };
 
   if (game.gameState?.phase === "solved") {
     const lastTheory = game.gameState.theories[game.gameState.theories.length - 1];
@@ -85,7 +86,7 @@ export function App() {
       <EndScreen
         title="MYSTERY SOLVED"
         narrative={narrative}
-        onPlayAgain={game.startGame}
+        onPlayAgain={handlePlayAgain}
       />
     );
   }
@@ -95,7 +96,7 @@ export function App() {
       <EndScreen
         title="CASE UNSOLVED"
         narrative="The truth slips through your fingers. Perhaps another detective will fare better."
-        onPlayAgain={game.startGame}
+        onPlayAgain={handlePlayAgain}
       />
     );
   }
@@ -104,5 +105,9 @@ export function App() {
     return <GameBoard game={game} />;
   }
 
-  return <LandingPage onStart={game.startGame} />;
+  if (selecting) {
+    return <MysterySelect onSelect={handleSelectMystery} />;
+  }
+
+  return <LandingPage onStart={() => setSelecting(true)} />;
 }
