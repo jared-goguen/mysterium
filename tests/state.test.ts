@@ -48,7 +48,7 @@ describe("createGameState", () => {
     expect(Object.keys(state.npcStates)).toHaveLength(5);
     for (const npc of Object.values(state.npcStates)) {
       expect(npc.emotion).toBe("calm");
-      expect(npc.cooperativeness).toBe(100);
+      expect(npc.rapport).toBe(40);
     }
   });
 });
@@ -90,15 +90,15 @@ describe("validateAction", () => {
     expect(r.valid).toBe(false);
   });
 
-  it("rejects FOCUS to hostile character", () => {
+  it("allows FOCUS to character with low rapport", () => {
     const state = freshState();
-    state.npcStates["tommy"] = { ...state.npcStates["tommy"]!, cooperativeness: 0 };
+    state.npcStates["tommy"] = { ...state.npcStates["tommy"]!, rapport: 0 };
     const r = validateAction(state, {
       type: "FOCUS",
       target: { type: "character", id: "tommy" },
     });
-    expect(r.valid).toBe(false);
-    expect(r.reason).toContain("refuses");
+    // Rapport affects conversation depth, not availability
+    expect(r.valid).toBe(true);
   });
 
   it("rejects SOLVE with no clues", () => {
@@ -187,6 +187,7 @@ describe("applyFocus", () => {
           },
           informationSpread: { marlene: ["Investigator talked to Tommy"] },
           npcStateUpdates: { tommy: "nervous" },
+          rapportDelta: 5,
         },
       },
       3000,
@@ -212,7 +213,7 @@ describe("applyInteract (location)", () => {
     const next = applyInteract(
       freshState(),
       { type: "INTERACT", message: "the bar" },
-      { context: "location", narrative: "A well-worn bar.", clueFound: null },
+      { context: "location", narrative: "A well-worn bar.", clueFound: null, matchedExaminable: null },
       1000,
     );
     expect(next.explorations).toHaveLength(1);
@@ -228,7 +229,7 @@ describe("applyInteract (location)", () => {
     state = applyInteract(
       state,
       { type: "INTERACT", message: "the trash bin" },
-      { context: "location", narrative: "A movie ticket stub.", clueFound: "clue-movie-stub" },
+      { context: "location", narrative: "A movie ticket stub.", clueFound: "clue-movie-stub", matchedExaminable: "ex-trash-bin" },
       2000,
     );
     expect(discoveredClueIds(state).has("clue-movie-stub")).toBe(true);
@@ -238,11 +239,11 @@ describe("applyInteract (location)", () => {
   it("tracks visited locations", () => {
     let state = freshState();
     state = applyInteract(state, { type: "INTERACT", message: "look" }, {
-      context: "location", narrative: "...", clueFound: null,
+      context: "location", narrative: "...", clueFound: null, matchedExaminable: null,
     }, 1000);
     state = applyFocus(state, { type: "FOCUS", target: { type: "location", id: "victors-office" } }, undefined, 2000);
     state = applyInteract(state, { type: "INTERACT", message: "look" }, {
-      context: "location", narrative: "...", clueFound: null,
+      context: "location", narrative: "...", clueFound: null, matchedExaminable: null,
     }, 3000);
     expect(visitedLocationIds(state).size).toBe(2);
   });
@@ -289,7 +290,7 @@ describe("applySolve", () => {
     return applyInteract(
       freshState(),
       { type: "INTERACT", message: "look" },
-      { context: "location", narrative: "...", clueFound: "clue-movie-stub" },
+      { context: "location", narrative: "...", clueFound: "clue-movie-stub", matchedExaminable: "ex-trash-bin" },
       1000,
     );
   }
@@ -369,7 +370,7 @@ describe("investigationProgress", () => {
     const state = applyInteract(
       freshState(),
       { type: "INTERACT", message: "trash" },
-      { context: "location", narrative: "...", clueFound: "clue-movie-stub" },
+      { context: "location", narrative: "...", clueFound: "clue-movie-stub", matchedExaminable: "ex-trash-bin" },
       1000,
     );
     expect(investigationProgress(state)).toBeCloseTo(1 / 6);
@@ -389,7 +390,7 @@ describe("deriveEventLog", () => {
     const state = applyInteract(
       freshState(),
       { type: "INTERACT", message: "the bar" },
-      { context: "location", narrative: "Nothing.", clueFound: null },
+      { context: "location", narrative: "Nothing.", clueFound: null, matchedExaminable: null },
       1000,
     );
     const log = deriveEventLog(state);
@@ -401,7 +402,7 @@ describe("deriveEventLog", () => {
     const state = applyInteract(
       freshState(),
       { type: "INTERACT", message: "trash" },
-      { context: "location", narrative: "Stub!", clueFound: "clue-movie-stub" },
+      { context: "location", narrative: "Stub!", clueFound: "clue-movie-stub", matchedExaminable: "ex-trash-bin" },
       1000,
     );
     const log = deriveEventLog(state);
@@ -426,7 +427,7 @@ describe("serialize / deserialize", () => {
     const state = applyInteract(
       freshState(),
       { type: "INTERACT", message: "trash" },
-      { context: "location", narrative: "...", clueFound: "clue-movie-stub" },
+      { context: "location", narrative: "...", clueFound: "clue-movie-stub", matchedExaminable: "ex-trash-bin" },
       1000,
     );
     const restored = deserialize(serialize(state));
@@ -445,16 +446,16 @@ describe("full evidence chain", () => {
     // Move to office, find 2 clues
     state = applyFocus(state, { type: "FOCUS", target: { type: "location", id: "victors-office" } }, undefined, 1000);
     state = applyInteract(state, { type: "INTERACT", message: "the trash bin" }, {
-      context: "location", narrative: "Movie stub...", clueFound: "clue-movie-stub",
+      context: "location", narrative: "Movie stub...", clueFound: "clue-movie-stub", matchedExaminable: "ex-trash-bin",
     }, 2000);
     state = applyInteract(state, { type: "INTERACT", message: "the air" }, {
-      context: "location", narrative: "Shalimar...", clueFound: "clue-perfume",
+      context: "location", narrative: "Shalimar...", clueFound: "clue-perfume", matchedExaminable: "ex-office-air",
     }, 3000);
 
     // Move to alley, find 1 clue
     state = applyFocus(state, { type: "FOCUS", target: { type: "location", id: "back-alley" } }, undefined, 4000);
     state = applyInteract(state, { type: "INTERACT", message: "the dumpster" }, {
-      context: "location", narrative: "Rat poison receipt...", clueFound: "clue-rat-poison",
+      context: "location", narrative: "Rat poison receipt...", clueFound: "clue-rat-poison", matchedExaminable: "ex-dumpster",
     }, 5000);
 
     // Talk to Eddie, get testimonial clue via summary
@@ -477,6 +478,7 @@ describe("full evidence chain", () => {
           },
           informationSpread: {},
           npcStateUpdates: { eddie: "anxious" },
+          rapportDelta: 10,
         },
       },
       8000,

@@ -35,6 +35,9 @@ const mystery: Mystery = {
         "Sharp-tongued, glamorous, guarded. Alternates between icy composure and flashes of genuine vulnerability.",
       speechPattern:
         "Clipped, precise, occasionally cutting. Drops into weary honesty when her guard slips.",
+      role: "suspect",
+      interests: ["music", "performing", "her mother's health", "the club's finances", "Victor's blackmail material"],
+      dismissiveOf: ["mob business", "gambling debts", "Victor's personal life outside the club"],
       motive:
         "Victor had been blackmailing her with photographs of her and a married senator. She wanted those photos destroyed.",
       alibi: {
@@ -81,6 +84,9 @@ const mystery: Mystery = {
         "Loyal, stoic, observant. Speaks carefully — every word considered. Gets flustered when pressed about his past.",
       speechPattern:
         "Short sentences. Working-class diction. Pauses before answering, like he's checking the words for traps.",
+      role: "suspect",
+      interests: ["the bar", "the club's regulars", "deliveries and inventory", "keeping things running smooth"],
+      dismissiveOf: ["high society", "music theory", "Victor's love life"],
       motive:
         "Victor owed him $5,000 in back wages and laughed when Tommy asked for it. That's a year's rent.",
       alibi: {
@@ -128,6 +134,9 @@ const mystery: Mystery = {
         "Measured, dignified, brittle. Maintains perfect composure until cornered, then flashes of cold steel show through.",
       speechPattern:
         "Formal, deliberate. Never uses two words where one will do. Voice drops to near-whisper when lying.",
+      role: "suspect",
+      interests: ["Victor's business affairs", "the insurance policy", "her future plans", "Eddie's music"],
+      dismissiveOf: ["the club's entertainment", "Frank Palazzo's threats", "Tommy's complaints about wages"],
       motive:
         "A $50,000 life insurance policy, freedom from a controlling and unfaithful husband, and a new life with Eddie Sato.",
       alibi: {
@@ -173,6 +182,9 @@ const mystery: Mystery = {
         "Reserved, artistic, quietly principled. Becomes visibly uncomfortable when forced to lie. Fidgets with his glasses when nervous.",
       speechPattern:
         "Thoughtful, slightly formal. Musical vocabulary creeps in — talks about 'dissonance' and 'resolution' even outside music.",
+      role: "suspect",
+      interests: ["music", "composition", "Dolores", "the club's atmosphere", "jazz"],
+      dismissiveOf: ["mob politics", "Victor's gambling", "money disputes"],
       motive:
         "Victor publicly humiliated him last week — called his music 'Oriental noise' in front of the whole club and threatened to fire him.",
       alibi: {
@@ -219,6 +231,9 @@ const mystery: Mystery = {
         "Intimidating, transactional, surprisingly shrewd. Uses silence as a weapon. Capable of sudden charm when it serves him.",
       speechPattern:
         "Blunt, working-class Italian inflections. Speaks in implications rather than statements. 'It would be unfortunate if...' rather than direct threats.",
+      role: "suspect",
+      interests: ["Victor's debts", "the family's business", "who was in the office", "the crime scene"],
+      dismissiveOf: ["music", "the performers", "Victor's personal relationships", "sentimental nonsense"],
       motive:
         "Victor owed the Palazzo family $15,000 in gambling debts. Frank was sent to collect — or send a message.",
       alibi: {
@@ -271,6 +286,7 @@ const mystery: Mystery = {
           surfaceDetail: "Rings from a hundred glasses. Tommy keeps it clean but it tells its own stories.",
           onExamine: "A well-worn bar. Bottles lined up like soldiers behind it. Tommy's rag sits folded neatly by the register. Nothing out of the ordinary — Tommy runs a tight ship.",
           clueId: null,
+          prerequisite: null,
         },
         {
           id: "ex-victors-table",
@@ -278,6 +294,7 @@ const mystery: Mystery = {
           surfaceDetail: "A brass 'RESERVED' placard. The candle has burned to a stub. A glass with melted ice.",
           onExamine: "The table Victor sat at before heading upstairs. A rocks glass with diluted whiskey — this was his first drink of the evening, not the poisoned one. A folded napkin with a phone number scrawled on it: Marlene's dressing room extension.",
           clueId: null,
+          prerequisite: null,
         },
         {
           id: "ex-stage-area",
@@ -285,6 +302,7 @@ const mystery: Mystery = {
           surfaceDetail: "A microphone on a chrome stand. A piano, lid open. Sheet music scattered on the bench.",
           onExamine: "The stage is small — intimate. From the wings on the right side, you can see the back hallway that leads to the stairs. Anyone standing here during a performance could have seen someone heading upstairs. The sheet music is Eddie's — handwritten, meticulous.",
           clueId: null,
+          prerequisite: null,
         },
         {
           id: "ex-cigarette-tray",
@@ -292,6 +310,7 @@ const mystery: Mystery = {
           surfaceDetail: "Overflowing with cigarette butts. Victor was a chain smoker.",
           onExamine: "Mostly Chesterfields — Victor's brand. But one butt has a lipstick mark. Dark red. The same shade Marlene wears. She must have sat here at some point tonight.",
           clueId: null,
+          prerequisite: null,
         },
       ],
       charactersPresent: ["tommy", "frank"],
@@ -308,6 +327,7 @@ const mystery: Mystery = {
           surfaceDetail: "Half-empty. A thin foam at the rim that shouldn't be there.",
           onExamine: "The glass is Victor's usual — heavy crystal, monogrammed 'VM'. The whiskey has an unusual foam and, if you lean close, a faint bitter-almond smell beneath the peat. Classic cyanide signature. This was poured from the bottle on the desk, but something was added to it.",
           clueId: null,
+          prerequisite: null,
         },
         {
           id: "ex-desk-papers",
@@ -315,6 +335,7 @@ const mystery: Mystery = {
           surfaceDetail: "Racing forms, receipts, a ledger book. The chaos of a man who lived by his own rules.",
           onExamine: "Mostly financial records for the club. But tucked under the ledger: a life insurance document. Victor Morel, $50,000 policy, sole beneficiary: Dolores Morel. A handwritten note in the margin reads 'policy review requested — D.M.' The date is two weeks ago.",
           clueId: null,
+          prerequisite: null,
         },
         {
           id: "ex-trash-bin",
@@ -322,6 +343,7 @@ const mystery: Mystery = {
           surfaceDetail: "A wire basket by the desk. Crumpled papers, an empty cigarette pack.",
           onExamine: "You sift through the trash. Cigarette pack, balled-up racing forms, a coffee-stained napkin — and a movie ticket stub. The Orpheum Theater, tonight's date, 8:00 PM showing. The Orpheum has been closed for renovation since last Monday. Someone wanted this stub to be found, or forgot to dispose of it properly.",
           clueId: "clue-movie-stub",
+          prerequisite: null,
         },
         {
           id: "ex-office-air",
@@ -329,6 +351,7 @@ const mystery: Mystery = {
           surfaceDetail: "Stale smoke and something else — floral, out of place in this room.",
           onExamine: "Beneath the cigarette smoke and the bitter-almond edge of cyanide, there's a distinct perfume. Shalimar — warm, powdery, unmistakable. This isn't Marlene's scent (she wears Chanel No. 5). It's not a scent any man in this club would wear. Someone female was in this room recently, and she wore Shalimar.",
           clueId: "clue-perfume",
+          prerequisite: null,
         },
         {
           id: "ex-filing-cabinet",
@@ -336,6 +359,7 @@ const mystery: Mystery = {
           surfaceDetail: "Dented metal, three drawers. The top drawer is slightly ajar.",
           onExamine: "The top drawer contains personnel files for the club staff. The middle drawer has financial records going back years. The bottom drawer is locked — and scratched around the keyhole, as if someone tried to force it recently. Tommy mentions Victor kept 'personal insurance' in there — blackmail material.",
           clueId: null,
+          prerequisite: null,
         },
       ],
       charactersPresent: [],
@@ -352,6 +376,7 @@ const mystery: Mystery = {
           surfaceDetail: "Overflowing. The lid won't close. Smells exactly like you'd expect.",
           onExamine: "You hold your breath and dig through the top layer. Kitchen waste, broken bottles, soggy cardboard — and a crumpled receipt from Henderson's Hardware on 4th Street, dated three days ago. One item: 'Warfarin Plus Rat Control, industrial grade.' Paid cash. The receipt has a partial thumbprint in what looks like grease. Warfarin Plus contains cyanide compounds.",
           clueId: "clue-rat-poison",
+          prerequisite: null,
         },
         {
           id: "ex-fire-escape",
@@ -359,6 +384,7 @@ const mystery: Mystery = {
           surfaceDetail: "Rust-orange iron ladder zigzagging up the brick wall. The bottom rung is six feet off the ground.",
           onExamine: "The fire escape connects to a window near Victor's office, but the window is painted shut from the inside. No one came in this way. However, the back stairs — an interior staircase accessible from the alley door — lead directly up to the office. The alley door has no lock.",
           clueId: null,
+          prerequisite: null,
         },
         {
           id: "ex-puddles",
@@ -366,6 +392,7 @@ const mystery: Mystery = {
           surfaceDetail: "Rainwater pooling on cracked concrete. Footprints trail through them.",
           onExamine: "Multiple sets of footprints in the wet grime. Most are large — men's shoes. But one set is smaller, narrower — a woman's heel. The prints lead from the alley to the back door and back again. They're partially washed out by rain but distinct enough to see the pattern: someone in heels came and went tonight.",
           clueId: null,
+          prerequisite: null,
         },
         {
           id: "ex-back-stairs",
@@ -373,6 +400,7 @@ const mystery: Mystery = {
           surfaceDetail: "A narrow wooden staircase just inside the back door, leading up to the office hallway.",
           onExamine: "The stairs creak badly. Anyone going up would be heard — unless the music was loud enough to cover it. During a set, the bass and drums would drown out everything. On the third step, caught on a nail: a single thread of cream-colored silk.",
           clueId: null,
+          prerequisite: null,
         },
       ],
       charactersPresent: [],
@@ -389,6 +417,7 @@ const mystery: Mystery = {
           surfaceDetail: "Cluttered with makeup, bobby pins, a half-empty coffee cup. A photo of a woman tucked into the mirror frame.",
           onExamine: "Marlene's station. The photo is of an older woman — her mother, based on the resemblance. Among the makeup: Chanel No. 5 perfume (not Shalimar). A telegram from Detroit: 'Treatment working. Send more when you can. Love, Mother.' Whatever Marlene is hiding, she has someone depending on her.",
           clueId: null,
+          prerequisite: null,
         },
         {
           id: "ex-tip-jar",
@@ -396,6 +425,7 @@ const mystery: Mystery = {
           surfaceDetail: "A large glass jar, half-full of bills and coins. A piece of tape reads 'TIPS — SPLIT FRIDAY.'",
           onExamine: "The jar seems light for a busy Saturday night. A quick count suggests about $40 — but the club was packed. Tommy mentioned the tips have been short lately. Someone's been skimming. A small notebook tucked behind the jar has careful tallies in Marlene's handwriting — she's been tracking exactly how much she takes.",
           clueId: null,
+          prerequisite: null,
         },
         {
           id: "ex-costume-rack",
@@ -403,6 +433,7 @@ const mystery: Mystery = {
           surfaceDetail: "Sequined dresses, a feather boa, a man's spare shirt. The usual backstage clutter.",
           onExamine: "Marlene's stage costumes. A spare dress for Eddie — he keeps a clean shirt here for performances. Nothing remarkable, except: on the floor beneath the rack, a crumpled playbill from the Orpheum Theater. An old one, from last month. Someone was thinking about the Orpheum recently.",
           clueId: null,
+          prerequisite: null,
         },
         {
           id: "ex-marlenes-purse",
@@ -410,6 +441,7 @@ const mystery: Mystery = {
           surfaceDetail: "A beaded clutch, left open on the counter.",
           onExamine: "Lipstick (dark red — matches the cigarette butt downstairs), compact mirror, a small roll of cash ($87 in mixed bills — a lot for a singer to carry), and a folded letter. The letter is from Victor: 'Remember our arrangement. The photos stay safe as long as you do.' Dated last month. Blackmail.",
           clueId: null,
+          prerequisite: null,
         },
       ],
       charactersPresent: ["marlene", "eddie"],
