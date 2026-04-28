@@ -13,7 +13,7 @@
  *   - Preserves em dashes and ellipses
  */
 
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 
 // ---------------------------------------------------------------------------
 // Segment types
@@ -111,7 +111,12 @@ function renderParagraph(segments: Segment[], key: number): ReactNode {
 
   return (
     <p key={key} className="narrative-paragraph">
-      {segments.map((seg, i) => renderSegment(seg, i))}
+      {segments.map((seg, i) => (
+        <Fragment key={i}>
+          {i > 0 && " "}
+          {renderSegment(seg, i)}
+        </Fragment>
+      ))}
     </p>
   );
 }

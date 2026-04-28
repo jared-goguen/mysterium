@@ -46,7 +46,7 @@ export function MainPanel({ mystery, focus, gameState, explorations, conversatio
           {contextName}
         </h2>
         <span className="text-xs text-[var(--text-muted)]">
-          {focus.type === "location" ? "Location" : "Interrogation"}
+          {focus.type === "location" ? "Location" : "Conversation"}
         </span>
       </div>
 

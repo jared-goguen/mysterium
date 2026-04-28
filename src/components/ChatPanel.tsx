@@ -108,7 +108,7 @@ export function ChatPanel({
               {character.name}
             </h3>
             <p className="text-xs italic text-[var(--text-muted)]">
-              {moodEmoji(emotion) ? `*${emotion}*` : `*${emotion}*`}
+              {emotion}
             </p>
             <p className="text-xs text-[var(--text-muted)] opacity-70">
               {character.personality}
