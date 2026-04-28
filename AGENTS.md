@@ -4,7 +4,7 @@ Read [DESIGN.md](DESIGN.md) first for the game design rationale.
 
 ## What This Is
 
-An AI-powered interactive mystery game. Players explore locations, interrogate suspects, discover clues, and reconstruct the timeline of events. The AI powers every NPC interaction, examination narrative, and solution evaluation.
+An AI-powered interactive mystery game. Players explore locations, talk to characters, discover clues, and reconstruct the timeline of events. The AI powers every NPC interaction, examination narrative, and solution evaluation.
 
 The core mechanic: a mystery is a **broken timeline**. The player fills in the gaps.
 
@@ -40,7 +40,7 @@ All in `lib/ai/`. Four play-cycle engines:
 | Engine | File | Model | Trigger |
 |---|---|---|---|
 | Examiner | `engines/examiner.ts` | Haiku 4.5 | EXAMINE action |
-| Conversant | `engines/conversant.ts` | Sonnet 4.5 (streaming) + Haiku 4.5 (clue detection) | SAY action |
+| Conversant | `engines/conversant.ts` | Sonnet 4.5 (streaming) + Haiku 4.5 (clue detection) | SAY action — rapport-tiered prompts; Narrator branch for the always-accessible case briefer |
 | Summarizer | `engines/summarizer.ts` | Haiku 4.5 | END_CONVERSATION action |
 | Judge | `engines/judge.ts` | Sonnet 4.5 | SOLVE / GIVE_UP action |
 
@@ -56,6 +56,7 @@ All structured output uses Claude tool_use. Model routing is in `client.ts`: `fa
 `functions/api/[[route]].ts` — Hono catch-all with endpoints:
 
 ```
+GET  /api/mysteries  → mystery catalog (id, title, genre, setting — no sensitive fields)
 POST /api/examine    → ExamineResult (JSON)
 POST /api/chat       → SayResult (SSE stream: delta + done events)
 POST /api/summarize  → EndConversationResult (JSON)
@@ -65,14 +66,13 @@ POST /api/give-up    → GiveUpResult (JSON)
 
 Each route: parse body → validate action → call engine → return result. Game state travels with each request (stateless server). API key from Workers env bindings.
 
+The mystery catalog (`GET /api/mysteries`) is served from the server-side mystery registry (`functions/mysteries.ts`). Clients receive a `ClientMystery` view — sensitive fields (guilt, secrets, alibis, examinable internals, solution truth) are stripped before transmission.
+
 ### React Hooks
 
-Two hooks with the same interface (components don't know which is active):
+- `src/hooks/useGameState.ts` — calls API routes, SSE streaming, async. The only hook in active use.
 
-- `src/hooks/useGameState.ts` — real: calls API routes, SSE streaming, async
-- `src/hooks/useMockGameState.ts` — mock: local fuzzy matching, synchronous
-
-Toggle in `src/App.tsx` by changing the import.
+`useMockGameState.ts` is **deprecated** — it accessed sensitive `Character` fields (secrets, alibis, examinable internals) and used the old cooperativeness model. Development uses the real API exclusively via `wrangler pages dev`.
 
 ### Solving a Mystery
 
@@ -82,9 +82,11 @@ Outcomes: **solved** (≥ 0.75), **close** (0.4–0.75), **wrong** (< 0.4).
 
 Wrong attempts have NPC consequences but the game continues. See [DESIGN.md](DESIGN.md) for the full rationale.
 
-### Example Mystery
+### Example Mysteries
 
 `examples/blue-parrot.ts` — complete noir mystery. 5 characters, 4 locations, 6 clues, 3 contradictions, 2 red herrings. Timeline with 4 known moments and 4 gaps. Used as the test fixture everywhere. Type-checked against the Mystery schema.
+
+`examples/crystal-court.ts` — fantasy mystery. Demonstrates the genre flexibility of the schema and exercises character interests/dismissiveOf fields and layered examinable prerequisites.
 
 ## Key Files
 

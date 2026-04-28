@@ -20,6 +20,13 @@ import {
 import { deriveEventLog } from "../lib/events";
 import { serialize, deserialize } from "../lib/persistence";
 import type { GameState } from "../types/state";
+import {
+  clientAvailableExaminables,
+  stripToListItem,
+  stripGameState,
+} from "../types/client";
+import type { ClientGameState } from "../types/client";
+import type { Mystery } from "../types/mystery";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -432,6 +439,265 @@ describe("serialize / deserialize", () => {
     );
     const restored = deserialize(serialize(state));
     expect(discoveredClueIds(restored).has("clue-movie-stub")).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Prerequisite filtering (clientAvailableExaminables)
+// ---------------------------------------------------------------------------
+
+describe("clientAvailableExaminables", () => {
+  /** Build a minimal ClientGameState with one location that has two examinables:
+   *  - "ex-open": no prerequisite (always available)
+   *  - "ex-gated": requires "ex-open" to have been examined first
+   */
+  function makeClientState(): ClientGameState {
+    const base = createGameState(mystery);
+    const client = stripGameState(base);
+    // Inject a synthetic location with prerequisite-gated examinables
+    const syntheticLocation = {
+      id: "test-room",
+      name: "Test Room",
+      description: "A room for testing.",
+      examinables: [
+        { id: "ex-open", name: "open thing", surfaceDetail: "visible", prerequisite: null },
+        { id: "ex-gated", name: "gated thing", surfaceDetail: "hidden", prerequisite: "ex-open" },
+      ],
+      charactersPresent: [],
+    };
+    return {
+      ...client,
+      mystery: {
+        ...client.mystery,
+        locations: [...client.mystery.locations, syntheticLocation],
+      },
+    };
+  }
+
+  it("returns only prerequisite-free examinables initially", () => {
+    const state = makeClientState();
+    const available = clientAvailableExaminables(state, "test-room");
+    expect(available.map((e) => e.id)).toEqual(["ex-open"]);
+  });
+
+  it("unlocks gated examinable after prerequisite is examined", () => {
+    const state = makeClientState();
+    // Simulate having examined "ex-open" at "test-room"
+    const stateWithExploration: ClientGameState = {
+      ...state,
+      explorations: [
+        ...state.explorations,
+        {
+          locationId: "test-room",
+          query: "the open thing",
+          clueFound: null,
+          examinableId: "ex-open",
+          narrative: "Nothing special.",
+          timestamp: 1000,
+        },
+      ],
+    };
+    const available = clientAvailableExaminables(stateWithExploration, "test-room");
+    expect(available.map((e) => e.id)).toContain("ex-open");
+    expect(available.map((e) => e.id)).toContain("ex-gated");
+    expect(available).toHaveLength(2);
+  });
+
+  it("returns empty array for unknown location", () => {
+    const state = makeClientState();
+    expect(clientAvailableExaminables(state, "nonexistent-room")).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Rapport initialization
+// ---------------------------------------------------------------------------
+
+describe("createGameState rapport initialization", () => {
+  it("initializes suspects with rapport 40", () => {
+    const state = createGameState(mystery);
+    const suspects = mystery.characters.filter((c) => c.role === "suspect");
+    for (const suspect of suspects) {
+      expect(state.npcStates[suspect.id]!.rapport).toBe(40);
+    }
+  });
+
+  it("initializes narrator with rapport 100", () => {
+    // Build a minimal mystery with a narrator character
+    const narratorMystery: Mystery = {
+      ...mystery,
+      id: "narrator-test",
+      characters: [
+        ...mystery.characters,
+        {
+          id: "detective-malone",
+          name: "Detective Malone",
+          description: "The narrator.",
+          personality: "Gruff but fair.",
+          speechPattern: "Terse.",
+          role: "narrator",
+          interests: ["the case"],
+          dismissiveOf: [],
+          motive: "Justice.",
+          alibi: { claimed: "On duty.", truth: "On duty.", gaps: [] },
+          meansAccess: false,
+          opportunityWindow: "N/A",
+          whatTheySaw: [],
+          whatTheyKnow: [],
+          whatTheySuspect: "Unknown.",
+          secret: { description: "None.", reason: "N/A", revealTrigger: "N/A" },
+          relationships: {},
+          isGuilty: false,
+        },
+      ],
+    };
+    const state = createGameState(narratorMystery);
+    expect(state.npcStates["detective-malone"]!.rapport).toBe(100);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Narrator initial focus
+// ---------------------------------------------------------------------------
+
+describe("createGameState narrator focus", () => {
+  it("focuses on narrator when mystery has one", () => {
+    const narratorMystery: Mystery = {
+      ...mystery,
+      id: "narrator-focus-test",
+      characters: [
+        ...mystery.characters,
+        {
+          id: "detective-malone",
+          name: "Detective Malone",
+          description: "The narrator.",
+          personality: "Gruff but fair.",
+          speechPattern: "Terse.",
+          role: "narrator",
+          interests: ["the case"],
+          dismissiveOf: [],
+          motive: "Justice.",
+          alibi: { claimed: "On duty.", truth: "On duty.", gaps: [] },
+          meansAccess: false,
+          opportunityWindow: "N/A",
+          whatTheySaw: [],
+          whatTheyKnow: [],
+          whatTheySuspect: "Unknown.",
+          secret: { description: "None.", reason: "N/A", revealTrigger: "N/A" },
+          relationships: {},
+          isGuilty: false,
+        },
+      ],
+    };
+    const state = createGameState(narratorMystery);
+    expect(state.focus).toEqual({ type: "character", id: "detective-malone" });
+  });
+
+  it("focuses on first location when no narrator", () => {
+    // Blue Parrot has no narrator — all suspects
+    const state = createGameState(mystery);
+    expect(state.focus).toEqual({ type: "location", id: "main-floor" });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// stripToListItem
+// ---------------------------------------------------------------------------
+
+describe("stripToListItem", () => {
+  it("returns only the catalog fields", () => {
+    const item = stripToListItem(mystery);
+    expect(item.id).toBe(mystery.id);
+    expect(item.title).toBe(mystery.title);
+    expect(item.genre).toBe(mystery.genre);
+    expect(item.difficulty).toBe(mystery.difficulty);
+    expect(item.description).toBe(mystery.description);
+    expect(item.setting).toEqual(mystery.setting);
+  });
+
+  it("does not include characters, locations, clues, or solution", () => {
+    const item = stripToListItem(mystery) as unknown as Record<string, unknown>;
+    expect(item["characters"]).toBeUndefined();
+    expect(item["locations"]).toBeUndefined();
+    expect(item["clues"]).toBeUndefined();
+    expect(item["solution"]).toBeUndefined();
+    expect(item["contradictions"]).toBeUndefined();
+    expect(item["redHerrings"]).toBeUndefined();
+    expect(item["timeline"]).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Rapport delta in reducer (applyFocus with rapportDelta)
+// ---------------------------------------------------------------------------
+
+describe("applyFocus rapportDelta", () => {
+  it("updates rapport when leaving a character conversation", () => {
+    let state = applyFocus(freshState(), {
+      type: "FOCUS",
+      target: { type: "character", id: "tommy" },
+    }, undefined, 1000);
+    state = applyInteract(state, { type: "INTERACT", message: "Hello" }, {
+      context: "character",
+      response: "Evening.",
+      cluesRevealed: [],
+    }, 2000);
+    // Leave with rapportDelta: 10 (40 → 50)
+    state = applyFocus(
+      state,
+      { type: "FOCUS", target: { type: "location", id: "main-floor" } },
+      {
+        conversationEnded: {
+          characterId: "tommy",
+          summary: {
+            topicsDiscussed: ["greeting"],
+            informationRevealed: [],
+            emotionalStateAfter: "calm",
+            contradictionsExposed: [],
+            cluesDiscovered: [],
+          },
+          informationSpread: {},
+          npcStateUpdates: {},
+          rapportDelta: 10,
+        },
+      },
+      3000,
+    );
+    expect(state.npcStates["tommy"]!.rapport).toBe(50);
+  });
+
+  it("clamps rapport at 100 when rapportDelta would exceed it", () => {
+    let state = applyFocus(freshState(), {
+      type: "FOCUS",
+      target: { type: "character", id: "tommy" },
+    }, undefined, 1000);
+    state = applyInteract(state, { type: "INTERACT", message: "Hello" }, {
+      context: "character",
+      response: "Evening.",
+      cluesRevealed: [],
+    }, 2000);
+    // rapportDelta: 200 should cap at 100
+    state = applyFocus(
+      state,
+      { type: "FOCUS", target: { type: "location", id: "main-floor" } },
+      {
+        conversationEnded: {
+          characterId: "tommy",
+          summary: {
+            topicsDiscussed: ["greeting"],
+            informationRevealed: [],
+            emotionalStateAfter: "calm",
+            contradictionsExposed: [],
+            cluesDiscovered: [],
+          },
+          informationSpread: {},
+          npcStateUpdates: {},
+          rapportDelta: 200,
+        },
+      },
+      3000,
+    );
+    expect(state.npcStates["tommy"]!.rapport).toBe(100);
   });
 });
 

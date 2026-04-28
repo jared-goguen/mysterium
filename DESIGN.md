@@ -117,14 +117,49 @@ Present reconstruction → AI evaluates per-moment → Score + feedback
 
 The investigation phase has no fixed ordering. The player can explore any location, talk to any character, and attempt to solve at any point. Clues discovered earlier may recontextualize later conversations. The game rewards curiosity and thoroughness.
 
+## Gameplay Feel: Exploration, Not Interrogation
+
+The investigation is framed as **exploration and synthesis**, not interrogation and extraction. This distinction shapes every design decision.
+
+Characters are **people living in their world**, not suspects being questioned. They have opinions, interests, and blind spots. They share what they know freely — filtered by what they're *aware* of, not by whether they're *willing* to talk. A character who doesn't mention the murder weapon isn't hiding it; they simply weren't paying attention to it.
+
+The player's job is to **synthesize a picture** from many partial perspectives, not to break down resistance and extract confessions.
+
+### Rapport Model
+
+Each character has a **rapport** score (starting around 30–50) that builds over the course of conversation. Rapport affects the *depth* of what characters share — not whether they'll talk at all. A character with low rapport gives surface-level answers; high rapport unlocks more personal observations, speculation, and emotional context.
+
+Rapport increases naturally through conversation. It is never a gate that blocks access — it's a dial that enriches what's available.
+
+### Character Interests and Engagement
+
+Each character has **interests** (topics they engage with enthusiastically) and **dismissiveOf** (topics they find boring or irrelevant). These drive conversational texture:
+
+- Ask a character about something they care about and they'll elaborate, speculate, and connect it to other things they know.
+- Ask about something they're dismissive of and they'll give a brief, flat answer — not because they're hiding something, but because they genuinely don't find it interesting.
+
+This creates natural variation in conversation without artificial willingness gates.
+
+### Layered Discovery
+
+Locations contain **examinable objects**, some of which are only revealed after others have been examined. Examinables can have **prerequisites** — earlier discoveries that must be made before a deeper layer becomes visible.
+
+This models how physical investigation actually works: you notice the desk before you notice the hidden drawer; you examine the drawer before you find the letter inside. Discovery is sequential and earned, not a flat list of things to click.
+
+### The Narrator
+
+The **Narrator** is a special always-accessible character who serves as the player's case briefer. Unlike other characters, the Narrator isn't a person in the world — they're the voice of the investigation itself. The player can always ask the Narrator to recap what's been discovered, clarify the known timeline, or summarize the state of the investigation.
+
+The Narrator never speculates or reveals hidden information. They only synthesize what the player has already found.
+
 ## Social Dynamics
 
-Suspects aren't static. The game world reacts to the investigation:
+The game world reacts to the investigation:
 
-- **Word spreads.** After you interrogate someone, other suspects may hear about it. "I heard you were asking about the poison..."
-- **NPCs have emotions.** They become nervous, hostile, or cooperative based on the investigation's progress and what you've asked.
-- **Wrong theories have consequences.** Presenting a wrong reconstruction doesn't end the game, but NPCs react — the real culprit may become bolder or more careful, and innocent suspects may lose patience.
-- **Every character has a secret.** Even innocent suspects hide something (an affair, a theft, a criminal record). This makes everyone seem suspicious and forces the player to distinguish real evasiveness from guilty evasiveness.
+- **Word spreads organically.** After you speak with someone, other characters may hear about it through natural gossip — not as an adversarial consequence, but as realistic information flow. "I heard you were asking about the poison..."
+- **NPCs have emotions.** They become nervous, curious, or guarded based on the investigation's progress and what you've asked.
+- **Wrong theories have consequences.** Presenting a wrong reconstruction doesn't end the game, but NPCs react — the real culprit may become bolder or more careful, and innocent characters may lose patience.
+- **Every character has a secret.** Even innocent characters hide something (an affair, a theft, a past they'd rather forget). This makes everyone seem evasive and forces the player to distinguish genuine concealment from ordinary privacy.
 
 ## Schema Overview
 
@@ -151,7 +186,7 @@ GameState
 ├── explorations[]     — what the player examined at each location
 ├── conversations[]    — message history + summaries per character
 ├── theories[]         — timeline reconstruction attempts + results
-├── npcStates{}        — current emotion / cooperativeness / awareness per NPC
+├── npcStates{}        — current emotion / rapport / awareness per NPC
 └── focus              — where the player is right now (location or character)
 ```
 
@@ -168,6 +203,6 @@ GIVE_UP   → reveal the full solution (Sonnet)
 
 - **AI mystery generation** — two-pass prompt (logical structure → atmospheric flesh) producing the moments-based schema
 - **Multiple mystery types** — murder, heist, disappearance, conspiracy, each with different gap structures
-- **Difficulty scaling** — more gaps, more red herrings, less cooperative NPCs
+- **Difficulty scaling** — more gaps, more red herrings, lower starting rapport
 - **Multiplayer** — different players reconstruct the same mystery, compare scores
 - **Replayable mysteries** — the same mystery can be played by different people (mystery = cartridge, game state = save file)
