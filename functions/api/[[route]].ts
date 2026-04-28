@@ -31,10 +31,63 @@ import type { GameState } from "../../types/state";
 type Env = {
   Bindings: {
     ANTHROPIC_API_KEY: string;
+    ENVIRONMENT?: string;
   };
 };
 
 const app = new Hono<Env>().basePath("/api");
+
+// ---------------------------------------------------------------------------
+// Global error handler — structured errors instead of opaque 500s
+// ---------------------------------------------------------------------------
+
+app.onError((err, c) => {
+  console.error(`[${c.req.method} ${c.req.path}]`, err.message, err.stack);
+  return c.json(
+    {
+      error: err.message,
+      // Include stack in non-production (preview deployments)
+      ...(c.env.ENVIRONMENT !== "production" && { stack: err.stack }),
+    },
+    500,
+  );
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/health — runtime validation (no AI calls)
+// ---------------------------------------------------------------------------
+
+app.get("/health", (c) => {
+  const mysteries = listMysteries();
+  const hasApiKey = Boolean(c.env.ANTHROPIC_API_KEY);
+
+  // Exercise the full pipeline minus AI: pick the first mystery,
+  // create initial state, strip it, reconstruct it.
+  const first = mysteries[0];
+  let pipelineOk = false;
+  let pipelineError: string | null = null;
+  if (first) {
+    try {
+      const mystery = getMystery(first.id);
+      if (mystery) {
+        const state = createGameState(mystery);
+        const client = stripGameState(state);
+        const reconstructed = reconstructGameState(client, mystery);
+        pipelineOk = reconstructed.phase === "playing";
+      }
+    } catch (err) {
+      pipelineError = err instanceof Error ? err.message : String(err);
+    }
+  }
+
+  return c.json({
+    ok: hasApiKey && pipelineOk,
+    mysteries: mysteries.length,
+    hasApiKey,
+    pipeline: pipelineOk ? "ok" : pipelineError ?? "no mysteries",
+    nodeCompat: typeof process !== "undefined",
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Helper: reconstruct full GameState from client payload
