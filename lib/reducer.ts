@@ -29,7 +29,8 @@ import type {
 export function applyFocus(
   state: GameState,
   action: FocusAction,
-  result?: FocusResult,
+  result: FocusResult | undefined,
+  timestamp: number,
 ): GameState {
   let next = { ...state, focus: action.target };
 
@@ -81,8 +82,8 @@ export function applyFocus(
             characterId: action.target.id,
             messages: [],
             summaries: [],
-            startedAt: Date.now(),
-            lastMessageAt: Date.now(),
+            startedAt: timestamp,
+            lastMessageAt: timestamp,
           } satisfies Conversation,
         ],
       };
@@ -100,6 +101,7 @@ export function applyInteract(
   state: GameState,
   action: InteractAction,
   result: InteractResult,
+  timestamp: number,
 ): GameState {
   if (result.context === "location") {
     // Examination
@@ -112,23 +114,22 @@ export function applyInteract(
           query: action.message,
           clueFound: result.clueFound,
           narrative: result.narrative,
-          timestamp: Date.now(),
+          timestamp,
         },
       ],
     };
   } else {
     // Conversation
-    const now = Date.now();
     const conversations = state.conversations.map((c) => {
       if (c.characterId !== state.focus.id) return c;
       return {
         ...c,
         messages: [
           ...c.messages,
-          { role: "player" as const, content: action.message, timestamp: now },
-          { role: "npc" as const, content: result.response, timestamp: now },
+          { role: "player" as const, content: action.message, timestamp },
+          { role: "npc" as const, content: result.response, timestamp },
         ],
-        lastMessageAt: now,
+        lastMessageAt: timestamp,
       };
     });
     return { ...state, conversations };
@@ -143,6 +144,7 @@ export function applySolve(
   state: GameState,
   action: SolveAction,
   result: SolveResult,
+  timestamp: number,
 ): GameState {
   const theory = {
     answers: action.answers,
@@ -153,7 +155,7 @@ export function applySolve(
     narrative: result.narrative,
     npcStateChanges: result.npcStateChanges,
     gameOver: result.gameOver,
-    timestamp: Date.now(),
+    timestamp,
   };
 
   // Apply NPC state changes
@@ -182,7 +184,7 @@ export function applySolve(
 export function applyGiveUp(
   state: GameState,
   _action: GiveUpAction,
-  _result?: GiveUpResult,
+  _result: GiveUpResult | undefined,
 ): GameState {
   return { ...state, phase: "revealed" };
 }
@@ -192,36 +194,44 @@ export function applyGiveUp(
 // ---------------------------------------------------------------------------
 
 export type ReducerInput =
-  | { action: FocusAction; result?: FocusResult }
-  | { action: InteractAction; result: InteractResult }
-  | { action: SolveAction; result: SolveResult }
-  | { action: GiveUpAction; result?: GiveUpResult };
+  | { action: FocusAction; result?: FocusResult; timestamp: number }
+  | { action: InteractAction; result: InteractResult; timestamp: number }
+  | { action: SolveAction; result: SolveResult; timestamp: number }
+  | { action: GiveUpAction; result?: GiveUpResult; timestamp: number };
 
 export function reduce(state: GameState, input: ReducerInput): GameState {
   switch (input.action.type) {
-    case "FOCUS":
-      return applyFocus(
-        state,
-        input.action,
-        (input as { result?: FocusResult }).result,
-      );
-    case "INTERACT":
-      return applyInteract(
-        state,
-        input.action,
-        (input as { result: InteractResult }).result,
-      );
-    case "SOLVE":
-      return applySolve(
-        state,
-        input.action,
-        (input as { result: SolveResult }).result,
-      );
-    case "GIVE_UP":
-      return applyGiveUp(
-        state,
-        input.action,
-        (input as { result?: GiveUpResult }).result,
-      );
+    case "FOCUS": {
+      const { action, result, timestamp } = input as {
+        action: FocusAction;
+        result?: FocusResult;
+        timestamp: number;
+      };
+      return applyFocus(state, action, result, timestamp);
+    }
+    case "INTERACT": {
+      const { action, result, timestamp } = input as {
+        action: InteractAction;
+        result: InteractResult;
+        timestamp: number;
+      };
+      return applyInteract(state, action, result, timestamp);
+    }
+    case "SOLVE": {
+      const { action, result, timestamp } = input as {
+        action: SolveAction;
+        result: SolveResult;
+        timestamp: number;
+      };
+      return applySolve(state, action, result, timestamp);
+    }
+    case "GIVE_UP": {
+      const { action, result } = input as {
+        action: GiveUpAction;
+        result?: GiveUpResult;
+        timestamp: number;
+      };
+      return applyGiveUp(state, action, result);
+    }
   }
 }
