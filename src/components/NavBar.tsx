@@ -28,6 +28,7 @@ const genreBadgeColors: Record<string, string> = {
   scifi: "bg-cyan-900/60 text-cyan-300",
   historical: "bg-stone-700 text-stone-300",
   heist: "bg-red-900/60 text-red-300",
+  fantasy: "bg-emerald-900/60 text-emerald-300",
 };
 
 const emotionEmoji: Record<string, string> = {
@@ -99,9 +100,29 @@ export function NavBar({
       {/* Divider */}
       <div className="h-6 w-px bg-[var(--border-subtle)]" />
 
+      {/* Narrator button (pinned first, if present) */}
+      {mystery.characters.filter((c) => c.role === "narrator").map((char) => {
+        const isFocused = focus.type === "character" && focus.id === char.id;
+        return (
+          <button
+            key={char.id}
+            onClick={() => onTalkTo(char.id)}
+            disabled={isFocused}
+            className={`flex items-center gap-1 rounded border px-2 py-1 text-xs transition-colors ${
+              isFocused
+                ? "cursor-default border-neutral-600 bg-neutral-700 text-[var(--text-muted)]"
+                : "border-neutral-700 text-[var(--text-muted)] hover:border-neutral-500 hover:bg-neutral-800 hover:text-[var(--text-primary)]"
+            }`}
+          >
+            <span className="text-[10px]">📋</span>
+            <span>Case Briefing</span>
+          </button>
+        );
+      })}
+
       {/* Suspect buttons */}
       <div className="flex items-center gap-1">
-        {mystery.characters.map((char) => {
+        {mystery.characters.filter((c) => c.role !== "narrator").map((char) => {
           const isFocused = focus.type === "character" && focus.id === char.id;
           const npcState = npcStates[char.id];
           const emotion = npcState?.emotion ?? "suspicious";
