@@ -22,6 +22,7 @@ interface SummarizeToolResult {
   cluesDiscovered: string[];
   informationSpread: Record<string, string[]>;
   npcStateUpdates: Record<string, string>;
+  rapportDelta: number;
 }
 
 /**
@@ -74,5 +75,8 @@ export async function summarize(
     if (validCharIds.has(charId)) npcStateUpdates[charId] = emotion;
   }
 
-  return { characterId, summary, informationSpread, npcStateUpdates };
+  // Clamp rapportDelta to reasonable range
+  const rapportDelta = Math.max(-20, Math.min(20, raw.rapportDelta ?? 5));
+
+  return { characterId, summary, informationSpread, npcStateUpdates, rapportDelta };
 }

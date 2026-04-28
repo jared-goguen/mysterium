@@ -84,6 +84,8 @@ export interface FocusResult {
     summary: ConversationSummary;
     informationSpread: Record<string, string[]>;
     npcStateUpdates: Record<string, string>;
+    /** How much rapport changed during this conversation. */
+    rapportDelta: number;
   };
 }
 

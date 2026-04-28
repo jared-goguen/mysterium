@@ -3,11 +3,48 @@
  *
  * Pure functions that select the relevant slice of mystery + state
  * for each AI engine. Keeps prompts focused and token-efficient.
+ *
+ * Design: exploration/synthesis feel. Characters are people in their world,
+ * not suspects being interrogated. Rapport drives depth, interests drive
+ * engagement. Narrators are case briefers, not suspects.
  */
 
-import type { Mystery, Character, Location, Clue } from "../../types/mystery";
+import type {
+  Mystery,
+  Character,
+  Location,
+  Examinable,
+  Clue,
+} from "../../types/mystery";
 import type { GameState, Conversation, NPCState } from "../../types/state";
 import { discoveredClueIds, getConversation } from "../../types/state";
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Compute which examinables are currently available at a location.
+ * An examinable is available if:
+ *   - It has no prerequisite, OR
+ *   - Its prerequisite examinable has been examined (appears in explorations)
+ */
+function availableExaminables(
+  location: Location,
+  state: GameState,
+): Examinable[] {
+  const examinedIds = new Set(
+    state.explorations
+      .filter(
+        (e) => e.locationId === location.id && e.examinableId !== null,
+      )
+      .map((e) => e.examinableId!),
+  );
+
+  return location.examinables.filter(
+    (e) => e.prerequisite === null || examinedIds.has(e.prerequisite),
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Location context (for Examiner)
@@ -17,6 +54,8 @@ export interface LocationContext {
   location: Location;
   genre: string;
   atmosphere: string;
+  /** Only examinables whose prerequisites are met. */
+  availableExaminables: Examinable[];
   /** Clue IDs already found at this location. */
   alreadyFoundHere: string[];
   /** Previous examination queries at this location. */
@@ -32,7 +71,8 @@ export function locationContext(
   if (!location) throw new Error(`Unknown location: ${locationId}`);
 
   const found = discoveredClueIds(state);
-  const locationClueIds = location.examinables
+  const available = availableExaminables(location, state);
+  const availableClueIds = available
     .map((e) => e.clueId)
     .filter((id): id is string => id !== null);
 
@@ -40,7 +80,8 @@ export function locationContext(
     location,
     genre: mystery.genre,
     atmosphere: mystery.setting.atmosphere,
-    alreadyFoundHere: locationClueIds.filter((id) => found.has(id)),
+    availableExaminables: available,
+    alreadyFoundHere: availableClueIds.filter((id) => found.has(id)),
     previousQueries: state.explorations
       .filter((e) => e.locationId === locationId)
       .map((e) => e.query),
@@ -55,12 +96,13 @@ export interface CharacterContext {
   character: Character;
   genre: string;
   atmosphere: string;
+  crimeDescription: string;
   npcState: NPCState;
   /** Compressed summaries from previous conversation visits. */
   previousSummaries: string[];
   /** Clue descriptions the player has found so far. */
   discoveredClueDescriptions: string[];
-  /** Names of other suspects the player has talked to. */
+  /** Names of other characters the player has talked to. */
   otherInterviewees: string[];
   /** Past theory attempt summaries. */
   theoryHistory: string[];
@@ -96,6 +138,7 @@ export function characterContext(
     character,
     genre: mystery.genre,
     atmosphere: mystery.setting.atmosphere,
+    crimeDescription: mystery.crimeDescription,
     npcState,
     previousSummaries: conversation
       ? conversation.summaries.map(
@@ -136,6 +179,7 @@ export function characterContext(
 export interface ConversationContext {
   character: Character;
   conversation: Conversation;
+  npcState: NPCState;
   /** All character names + relationships to this character. */
   otherCharacters: { id: string; name: string; relationship: string }[];
   /** Known contradiction IDs involving this character. */
@@ -154,15 +198,20 @@ export function conversationContext(
   if (!conversation)
     throw new Error(`No conversation with: ${characterId}`);
 
+  const npcState = state.npcStates[characterId];
+  if (!npcState) throw new Error(`No NPC state for: ${characterId}`);
+
   return {
     character,
     conversation,
+    npcState,
     otherCharacters: mystery.characters
       .filter((c) => c.id !== characterId)
       .map((c) => ({
         id: c.id,
         name: c.name,
-        relationship: character.relationships[c.id] ?? "no particular relationship",
+        relationship:
+          character.relationships[c.id] ?? "no particular relationship",
       })),
     relevantContradictions: mystery.contradictions
       .filter(

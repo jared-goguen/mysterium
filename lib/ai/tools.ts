@@ -104,6 +104,11 @@ export const SUMMARIZE_TOOL: Tool = {
         description:
           "Map of characterId → new emotional state for NPCs affected by information spread.",
       },
+      rapportDelta: {
+        type: "number",
+        description:
+          "How much rapport changed during this conversation. Usually +2 to +15. 0 or negative only for hostile interactions.",
+      },
     },
     required: [
       "topicsDiscussed",
@@ -113,6 +118,7 @@ export const SUMMARIZE_TOOL: Tool = {
       "cluesDiscovered",
       "informationSpread",
       "npcStateUpdates",
+      "rapportDelta",
     ],
   },
 };

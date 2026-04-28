@@ -36,7 +36,7 @@ export function applyFocus(
 
   // If leaving a character, apply conversation summary
   if (result?.conversationEnded) {
-    const { characterId, summary, informationSpread, npcStateUpdates } =
+    const { characterId, summary, informationSpread, npcStateUpdates, rapportDelta } =
       result.conversationEnded;
 
     // Add summary to conversation
@@ -47,6 +47,15 @@ export function applyFocus(
 
     // Update NPC states
     const npcStates = { ...next.npcStates };
+
+    // Apply rapport change to the character we just talked to
+    const talked = npcStates[characterId];
+    if (talked && rapportDelta !== 0) {
+      npcStates[characterId] = {
+        ...talked,
+        rapport: Math.max(0, Math.min(100, talked.rapport + rapportDelta)),
+      };
+    }
 
     for (const [charId, newAwareness] of Object.entries(informationSpread)) {
       const existing = npcStates[charId];
