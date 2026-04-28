@@ -1,26 +1,117 @@
 @import "tailwindcss";
 
+/* ─── CSS Custom Properties ─────────────────────────────────────────────── */
 :root {
-  --bg-primary: #0a0a0a;
-  --bg-panel: #141414;
-  --bg-input: #0d0d0d;
-  --text-primary: #e8e4df;
+  --bg-primary: #0b0a09;
+  --bg-panel: #111110;
+  --bg-surface: #0f0e0d;
+  --bg-input: #0d0d0b;
+  --text-primary: #e8e4dc;
+  --text-secondary: #c4bfb6;
   --text-muted: #8a8580;
-  --accent-clue: #d4a843;
+  --accent-clue: #c9a54b;
   --accent-danger: #b44a4a;
-  --border-subtle: #1f1f1f;
+  --border-subtle: #1a1917;
+  --border-warm: #2a2725;
 }
 
+/* ─── Base Styles ────────────────────────────────────────────────────────── */
 body {
   font-family: system-ui, "Georgia", "Times New Roman", serif;
   color: var(--text-primary);
   background: var(--bg-primary);
 }
 
-/* Narrative text — rich rendering for AI-generated prose */
+::selection {
+  background: rgba(201, 165, 75, 0.25);
+  color: var(--text-primary);
+}
+
+/* ─── Typography Classes ─────────────────────────────────────────────────── */
+.noir-header {
+  font-variant: small-caps;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.serif-heading {
+  font-family: Georgia, "Times New Roman", serif;
+  letter-spacing: 0.05em;
+}
+
+/* ─── Animations ─────────────────────────────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes goldGlow {
+  0%   { box-shadow: 0 0 0 0 rgba(201, 165, 75, 0); }
+  50%  { box-shadow: 0 0 8px 2px rgba(201, 165, 75, 0.35); }
+  100% { box-shadow: 0 0 0 0 rgba(201, 165, 75, 0); }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ─── Vignette Overlay ───────────────────────────────────────────────────── */
+.vignette {
+  position: relative;
+}
+
+.vignette::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(0, 0, 0, 0.4) 100%);
+  z-index: 50;
+}
+
+/* ─── Utility Classes ────────────────────────────────────────────────────── */
+.noir-panel {
+  background: var(--bg-panel);
+  border-radius: 0.375rem;
+  border: 1px solid var(--border-subtle);
+}
+
+.gold-border-left {
+  border-left: 3px solid var(--accent-clue);
+}
+
+.drop-cap::first-letter {
+  float: left;
+  font-size: 3.2em;
+  font-family: Georgia, "Times New Roman", serif;
+  color: var(--accent-clue);
+  line-height: 0.8;
+  padding-right: 0.1em;
+  font-weight: normal;
+}
+
+.gold-glow {
+  animation: goldGlow 2s ease-in-out infinite;
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+/* ─── Narrative Text — rich rendering for AI-generated prose ─────────────── */
 .narrative {
   font-family: Georgia, "Times New Roman", serif;
-  line-height: 1.75;
+  line-height: 1.8;
   font-size: 0.9375rem;
 }
 
@@ -63,7 +154,28 @@ body {
   color: var(--accent-clue);
 }
 
-/* Scrollbar styling for the noir theme */
+/* ─── Collapsible Panel Support ──────────────────────────────────────────── */
+.collapsible-panel {
+  transition: grid-template-rows 0.3s ease;
+}
+
+.collapsible-content {
+  overflow: hidden;
+}
+
+/* ─── Notebook Ruled Lines ───────────────────────────────────────────────── */
+.ruled-lines {
+  background-image: repeating-linear-gradient(
+    transparent,
+    transparent 23px,
+    rgba(138, 133, 128, 0.1) 23px,
+    rgba(138, 133, 128, 0.1) 24px
+  );
+  background-size: 100% 24px;
+  line-height: 24px;
+}
+
+/* ─── Scrollbar Styling ──────────────────────────────────────────────────── */
 ::-webkit-scrollbar {
   width: 6px;
 }
