@@ -19,8 +19,13 @@ import { summarize } from "../../lib/ai/engines/summarizer";
 import { evaluate, giveUp } from "../../lib/ai/engines/judge";
 import { validateAction } from "../../lib/validators";
 import { createGameState } from "../../lib/initializers";
-import { stripMystery, stripGameState } from "../../types/client";
+import {
+  stripMystery,
+  stripGameState,
+  reconstructGameState,
+} from "../../types/client";
 import { getMystery } from "../mysteries";
+import type { ClientGameState } from "../../types/client";
 import type { GameState } from "../../types/state";
 
 type Env = {
@@ -30,6 +35,35 @@ type Env = {
 };
 
 const app = new Hono<Env>().basePath("/api");
+
+// ---------------------------------------------------------------------------
+// Helper: reconstruct full GameState from client payload
+// ---------------------------------------------------------------------------
+
+/**
+ * Parse { mysteryId, state } from the request body and reconstruct
+ * the full GameState by looking up the mystery from the server registry.
+ * Returns the full GameState or a 400/404 error response.
+ */
+function resolveGameState(
+  mysteryId: string,
+  clientState: ClientGameState,
+): GameState | { error: string; status: 400 | 404 } {
+  if (!mysteryId || !clientState) {
+    return { error: "Missing mysteryId or state", status: 400 };
+  }
+  const mystery = getMystery(mysteryId);
+  if (!mystery) {
+    return { error: `Unknown mystery: ${mysteryId}`, status: 404 };
+  }
+  return reconstructGameState(clientState, mystery);
+}
+
+function isError(
+  result: GameState | { error: string; status: 400 | 404 },
+): result is { error: string; status: 400 | 404 } {
+  return "error" in result && "status" in result;
+}
 
 // ---------------------------------------------------------------------------
 // POST /api/start — initialize a new game from a mystery ID
@@ -57,10 +91,17 @@ app.post("/start", async (c) => {
 // ---------------------------------------------------------------------------
 
 app.post("/examine", async (c) => {
-  const { gameState, message } = await c.req.json<{
-    gameState: GameState;
+  const { mysteryId, state, message } = await c.req.json<{
+    mysteryId: string;
+    state: ClientGameState;
     message: string;
   }>();
+
+  const resolved = resolveGameState(mysteryId, state);
+  if (isError(resolved)) {
+    return c.json({ error: resolved.error }, resolved.status);
+  }
+  const gameState = resolved;
 
   const action = { type: "INTERACT" as const, message };
   const validation = validateAction(gameState, action);
@@ -78,10 +119,17 @@ app.post("/examine", async (c) => {
 // ---------------------------------------------------------------------------
 
 app.post("/chat", async (c) => {
-  const { gameState, message } = await c.req.json<{
-    gameState: GameState;
+  const { mysteryId, state, message } = await c.req.json<{
+    mysteryId: string;
+    state: ClientGameState;
     message: string;
   }>();
+
+  const resolved = resolveGameState(mysteryId, state);
+  if (isError(resolved)) {
+    return c.json({ error: resolved.error }, resolved.status);
+  }
+  const gameState = resolved;
 
   const action = { type: "INTERACT" as const, message };
   const validation = validateAction(gameState, action);
@@ -134,10 +182,17 @@ app.post("/chat", async (c) => {
 // ---------------------------------------------------------------------------
 
 app.post("/summarize", async (c) => {
-  const { gameState, characterId } = await c.req.json<{
-    gameState: GameState;
+  const { mysteryId, state, characterId } = await c.req.json<{
+    mysteryId: string;
+    state: ClientGameState;
     characterId: string;
   }>();
+
+  const resolved = resolveGameState(mysteryId, state);
+  if (isError(resolved)) {
+    return c.json({ error: resolved.error }, resolved.status);
+  }
+  const gameState = resolved;
 
   const client = createClient(c.env.ANTHROPIC_API_KEY);
   const result = await summarize(client, gameState, characterId);
@@ -149,11 +204,18 @@ app.post("/summarize", async (c) => {
 // ---------------------------------------------------------------------------
 
 app.post("/solve", async (c) => {
-  const { gameState, answers, evidenceCited } = await c.req.json<{
-    gameState: GameState;
+  const { mysteryId, state, answers, evidenceCited } = await c.req.json<{
+    mysteryId: string;
+    state: ClientGameState;
     answers: Record<string, string>;
     evidenceCited: string[];
   }>();
+
+  const resolved = resolveGameState(mysteryId, state);
+  if (isError(resolved)) {
+    return c.json({ error: resolved.error }, resolved.status);
+  }
+  const gameState = resolved;
 
   const action = { type: "SOLVE" as const, answers, evidenceCited };
   const validation = validateAction(gameState, action);
@@ -171,9 +233,16 @@ app.post("/solve", async (c) => {
 // ---------------------------------------------------------------------------
 
 app.post("/give-up", async (c) => {
-  const { gameState } = await c.req.json<{
-    gameState: GameState;
+  const { mysteryId, state } = await c.req.json<{
+    mysteryId: string;
+    state: ClientGameState;
   }>();
+
+  const resolved = resolveGameState(mysteryId, state);
+  if (isError(resolved)) {
+    return c.json({ error: resolved.error }, resolved.status);
+  }
+  const gameState = resolved;
 
   const validation = validateAction(gameState, { type: "GIVE_UP" });
   if (!validation.valid) {

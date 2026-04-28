@@ -303,3 +303,24 @@ export function stripGameState(state: GameState): ClientGameState {
     startedAt: state.startedAt,
   };
 }
+
+/**
+ * Reconstruct a full GameState from a ClientGameState and the full Mystery.
+ * Used server-side: the client sends ClientGameState (no sensitive data),
+ * the server looks up the full Mystery from the registry, and combines them.
+ */
+export function reconstructGameState(
+  clientState: ClientGameState,
+  mystery: Mystery,
+): GameState {
+  return {
+    mystery,
+    phase: clientState.phase,
+    explorations: clientState.explorations,
+    conversations: clientState.conversations,
+    theories: clientState.theories,
+    npcStates: clientState.npcStates,
+    focus: clientState.focus,
+    startedAt: clientState.startedAt,
+  };
+}
