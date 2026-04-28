@@ -94,6 +94,15 @@ export interface Character {
 
   // -- Solution --
   isGuilty: boolean;
+
+  // -- Opening (narrators only) --
+
+  /**
+   * The narrator's opening line when the game starts.
+   * Shown immediately as the first message in the conversation.
+   * Should set the atmosphere, introduce the case, and invite the player in.
+   */
+  opening?: string;
 }
 
 // ---------------------------------------------------------------------------

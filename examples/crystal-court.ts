@@ -90,6 +90,8 @@ const mystery: Mystery = {
           "Pities the servant. Loyal to a fault, and loyalty in this court is a dangerous quality.",
       },
       isGuilty: false,
+      opening:
+        "The three moons hang low tonight, and their light offers no comfort. I am Herald Aldric, keeper of the court's records and voice of its proclamations. It falls to me to tell you what has transpired.\n\nLady Seraphine Dawnweaver — Court Enchantress, guardian of the ward-stones, and the last true practitioner of the old magics — was found dead in her sanctum at dawn. Her life-force drained entirely. The method is one that has been forbidden since the Hollowing War: siphoning magic. Someone in this castle commanded power that should not exist.\n\nFive souls held ward-stone access to her sanctum. Lord Caelum, the Heir Presumptive. Miravel Thornwick, our Court Alchemist. Thessaly, the young seer. Captain Voss of the castle guard. And Rowan, Seraphine's devoted servant. Each had reason to visit. One had reason to kill.\n\nThe sanctum, the laboratory, the observatory, the great hall — you may explore them all. Speak with whom you wish. I shall remain here should you need context or counsel. This castle has long memories, and I know most of them.",
     },
     {
       id: "caelum",

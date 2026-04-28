@@ -129,19 +129,32 @@ export function applyInteract(
       ],
     };
   } else {
-    // Conversation
-    const conversations = state.conversations.map((c) => {
-      if (c.characterId !== state.focus.id) return c;
-      return {
-        ...c,
-        messages: [
-          ...c.messages,
-          { role: "player" as const, content: action.message, timestamp },
-          { role: "npc" as const, content: result.response, timestamp },
-        ],
-        lastMessageAt: timestamp,
-      };
-    });
+    // Conversation — find or create the conversation record
+    const characterId = state.focus.id;
+    const existing = state.conversations.find(
+      (c) => c.characterId === characterId,
+    );
+    const base: Conversation = existing ?? {
+      characterId,
+      messages: [],
+      summaries: [],
+      startedAt: timestamp,
+      lastMessageAt: timestamp,
+    };
+    const updated: Conversation = {
+      ...base,
+      messages: [
+        ...base.messages,
+        { role: "player" as const, content: action.message, timestamp },
+        { role: "npc" as const, content: result.response, timestamp },
+      ],
+      lastMessageAt: timestamp,
+    };
+    const conversations = existing
+      ? state.conversations.map((c) =>
+          c.characterId === characterId ? updated : c,
+        )
+      : [...state.conversations, updated];
     return { ...state, conversations };
   }
 }

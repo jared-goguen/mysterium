@@ -3,7 +3,7 @@
  */
 
 import type { Mystery } from "../types/mystery";
-import type { GameState, NPCState } from "../types/state";
+import type { GameState, NPCState, Conversation } from "../types/state";
 
 function initNPCStates(mystery: Mystery): Record<string, NPCState> {
   const states: Record<string, NPCState> = {};
@@ -32,14 +32,39 @@ export function createGameState(mystery: Mystery): GameState {
     ? { type: "character" as const, id: narrator.id }
     : { type: "location" as const, id: firstLocation.id };
 
+  const now = Date.now();
+
+  // If the narrator has an opening line, create the conversation with it.
+  const initialConversations: Conversation[] = [];
+  if (narrator?.opening) {
+    initialConversations.push({
+      characterId: narrator.id,
+      messages: [
+        { role: "npc", content: narrator.opening, timestamp: now },
+      ],
+      summaries: [],
+      startedAt: now,
+      lastMessageAt: now,
+    });
+  } else if (narrator) {
+    // Narrator without opening — still create the conversation record
+    initialConversations.push({
+      characterId: narrator.id,
+      messages: [],
+      summaries: [],
+      startedAt: now,
+      lastMessageAt: now,
+    });
+  }
+
   return {
     mystery,
     phase: "playing",
     explorations: [],
-    conversations: [],
+    conversations: initialConversations,
     theories: [],
     npcStates: initNPCStates(mystery),
     focus: initialFocus,
-    startedAt: Date.now(),
+    startedAt: now,
   };
 }
