@@ -25,6 +25,7 @@ export interface GameBoardProps {
     interviewedCharacters: Set<string>;
     progress: number;
     streamingText: string | null;
+    pendingMessage: string | null;
     loading: boolean;
     error: string | null;
     focus: (target: FocusTarget) => void;
@@ -80,7 +81,7 @@ export function GameBoard({ game }: GameBoardProps) {
           discoveredClues={game.discoveredClues}
           streamingText={game.streamingText}
           loading={game.loading}
-          pendingMessage={null}
+          pendingMessage={game.pendingMessage}
           onExamine={game.interact}
           onTalkTo={handleFocusCharacter}
           onSendMessage={(_charId, msg) => game.interact(msg)}

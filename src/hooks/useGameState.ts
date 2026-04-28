@@ -47,6 +47,7 @@ interface HookState {
   game: ClientGameState | null;
   notes: string;
   streamingText: string | null;
+  pendingMessage: string | null;
   loading: boolean;
   error: string | null;
 }
@@ -56,7 +57,8 @@ type HookAction =
   | { type: "UPDATE_NOTES"; text: string }
   | { type: "SET_STREAMING"; text: string | null }
   | { type: "SET_LOADING"; loading: boolean }
-  | { type: "SET_ERROR"; error: string | null };
+  | { type: "SET_ERROR"; error: string | null }
+  | { type: "SET_PENDING"; message: string | null };
 
 function hookReducer(state: HookState, action: HookAction): HookState {
   switch (action.type) {
@@ -70,6 +72,8 @@ function hookReducer(state: HookState, action: HookAction): HookState {
       return { ...state, loading: action.loading };
     case "SET_ERROR":
       return { ...state, error: action.error, loading: false };
+    case "SET_PENDING":
+      return { ...state, pendingMessage: action.message };
   }
 }
 
@@ -84,7 +88,7 @@ function loadPersistedState(): HookState | null {
     const raw = sessionStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as { game: ClientGameState | null; notes: string };
-      return { game: parsed.game, notes: parsed.notes, streamingText: null, loading: false, error: null };
+      return { game: parsed.game, notes: parsed.notes, streamingText: null, pendingMessage: null, loading: false, error: null };
     }
   } catch { /* start fresh */ }
   return null;
@@ -146,6 +150,7 @@ async function readSSE<T>(
   const decoder = new TextDecoder();
   let buffer = "";
   let result: T | undefined;
+  let eventType = "";
 
   while (true) {
     const { done, value } = await reader.read();
@@ -155,7 +160,6 @@ async function readSSE<T>(
     const lines = buffer.split("\n");
     buffer = lines.pop() ?? "";
 
-    let eventType = "";
     for (const line of lines) {
       if (line.startsWith("event: ")) {
         eventType = line.slice(7);
@@ -191,6 +195,7 @@ export interface GameStateHook {
   interviewedCharacters: Set<string>;
   progress: number;
   streamingText: string | null;
+  pendingMessage: string | null;
   loading: boolean;
   error: string | null;
 
@@ -208,7 +213,7 @@ export interface GameStateHook {
 
 export function useGameState(): GameStateHook {
   const initial: HookState = loadPersistedState() ?? {
-    game: null, notes: "", streamingText: null, loading: false, error: null,
+    game: null, notes: "", streamingText: null, pendingMessage: null, loading: false, error: null,
   };
 
   const [state, dispatch] = useReducer(hookReducer, initial);
@@ -273,8 +278,9 @@ export function useGameState(): GameStateHook {
     const action = { type: "INTERACT" as const, message };
 
     dispatch({ type: "SET_LOADING", loading: true });
-    // Show streaming indicator for character conversations
+    // Show player message immediately (optimistic)
     if (game.focus.type === "character") {
+      dispatch({ type: "SET_PENDING", message });
       dispatch({ type: "SET_STREAMING", text: "" });
     }
 
@@ -294,10 +300,12 @@ export function useGameState(): GameStateHook {
       .then((result) => {
         const next = applyInteract(asGameState(game), action, result, Date.now());
         dispatch({ type: "SET_GAME", game: asClientState(next) });
+        dispatch({ type: "SET_PENDING", message: null });
         dispatch({ type: "SET_STREAMING", text: null });
         dispatch({ type: "SET_LOADING", loading: false });
       })
       .catch((err) => {
+        dispatch({ type: "SET_PENDING", message: null });
         dispatch({ type: "SET_STREAMING", text: null });
         dispatch({ type: "SET_ERROR", error: err.message });
       });
@@ -381,6 +389,7 @@ export function useGameState(): GameStateHook {
     interviewedCharacters: derived.interviewedCharacters,
     progress: derived.progress,
     streamingText: state.streamingText,
+    pendingMessage: state.pendingMessage,
     loading: state.loading,
     error: state.error,
     startGame,
