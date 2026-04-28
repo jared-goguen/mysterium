@@ -23,7 +23,7 @@ Three layers, strict separation:
 
 **Mystery** (`types/mystery.ts`) — immutable world. Characters, locations, examinables, clues, contradictions, timeline, and a solution defined as **moments** (known events + hidden gaps). Never mutated after creation.
 
-**GameState** (`types/state.ts`) — mutable player journey. Three append-only logs (explorations, conversations, theories) + cached NPC states + current focus. Derived state computed via pure functions.
+**GameState** (`types/state.ts`) — mutable player journey. Three append-only logs (explorations, conversations, theories) + cached NPC states (emotion, rapport, awareness) + current focus. Derived state computed via pure functions. Rapport replaces the old cooperativeness field — it builds over conversation and affects depth of responses, not availability.
 
 ### State Machine
 
@@ -94,14 +94,17 @@ Wrong attempts have NPC consequences but the game continues. See [DESIGN.md](DES
 |---|---|
 | Understand the game design | `DESIGN.md` |
 | Understand the data model | `types/mystery.ts`, `types/state.ts`, `types/actions.ts` |
+| Understand the client-safe mystery shape | `types/client.ts` — `ClientMystery` strips sensitive fields |
 | Change game logic | `lib/reducer.ts`, `lib/validators.ts` |
 | Change AI behavior | `lib/ai/prompts/*.ts` (prompts) or `lib/ai/engines/*.ts` (wiring) |
 | Change what context the AI sees | `lib/ai/context.ts` |
 | Add a new API route | `functions/api/[[route]].ts` |
+| Register or add a mystery | `functions/mysteries.ts` — the server-side mystery registry |
 | Change UI layout | `src/components/GameBoard.tsx` |
 | Change how a panel works | `src/components/{EventLog,LocationView,ChatPanel,NotesPanel}.tsx` |
 | Change the solve flow | `src/components/SolutionModal.tsx` |
-| Add a new mystery | `examples/` — export a `Mystery` object |
+| Change mystery selection UI | `src/components/MysterySelect.tsx`, `src/components/MysteryCard.tsx` |
+| Add a new mystery | `examples/` — export a `Mystery` object, register in `functions/mysteries.ts` |
 
 ## Commands
 
@@ -110,11 +113,12 @@ bun install                        # install deps
 bun test                           # unit tests (state machine)
 bun run typecheck                  # TypeScript strict
 bun run tests/live-play.ts         # live API test (~$0.03)
-bunx vite                          # dev server (mock mode)
-wrangler pages dev -- bunx vite    # dev server (real AI)
+wrangler pages dev -- bunx vite    # dev server (real AI + mystery selection)
 bunx vite build                    # production build
 wrangler pages deploy dist         # deploy
 ```
+
+> **Note:** `bunx vite` alone (without `wrangler pages dev`) no longer works for development — the mystery selection screen requires `GET /api/mysteries`, which is only served by the Workers runtime. Always use `wrangler pages dev -- bunx vite` for local development.
 
 ## Constraints
 
@@ -124,6 +128,7 @@ wrangler pages deploy dist         # deploy
 - **Prompts are pure functions.** They take state and return strings. No side effects. Testable.
 - **Components are presentational.** They accept props, don't own game state. The hook is the boundary.
 - **Solving = timeline reconstruction.** The player fills in gaps, not accuses suspects. See DESIGN.md.
+- **Gameplay feel = exploration, not interrogation.** Characters share freely from their perspective; rapport affects depth, not access. See DESIGN.md for the full rationale.
 
 ## Testing
 
