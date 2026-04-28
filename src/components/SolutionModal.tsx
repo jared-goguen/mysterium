@@ -53,24 +53,29 @@ export function SolutionModal({
 
   const outcomeBadge = lastTheory
     ? {
-        solved: { text: "Mystery Solved", style: "bg-green-900/60 text-green-300" },
-        close: { text: "Getting Close", style: "bg-amber-900/60 text-amber-300" },
-        wrong: { text: "Off the Mark", style: "bg-red-900/60 text-red-300" },
+        solved: { text: "CASE CLOSED", style: "bg-green-900/60 text-green-300 border border-green-700/50" },
+        close: { text: "PARTIAL DEDUCTION", style: "bg-amber-900/60 text-amber-300 border border-amber-700/50" },
+        wrong: { text: "DEAD END", style: "bg-red-900/60 text-red-300 border border-red-700/50" },
       }[lastTheory.outcome]
     : null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4">
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-panel)]">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center px-4"
+      style={{
+        background: "radial-gradient(ellipse at center, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.95) 100%)",
+      }}
+    >
+      <div className="fade-in max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-[var(--border-warm)] bg-[var(--bg-panel)]">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-[var(--border-subtle)] px-6 py-4">
-          <h2 className="text-lg font-semibold tracking-wide text-[var(--text-primary)]">
-            🔍 Reconstruct the Timeline
+        <div className="flex items-center justify-between border-b border-[var(--border-warm)] px-6 py-4">
+          <h2 className="noir-header text-base text-[var(--text-primary)]">
+            Reconstruct the Timeline
           </h2>
           {!lastTheory?.gameOver && (
             <button
               onClick={onClose}
-              className="text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+              className="text-sm text-[var(--text-muted)] transition-colors hover:text-[var(--text-primary)]"
             >
               ✕
             </button>
@@ -80,13 +85,13 @@ export function SolutionModal({
         {/* Result display */}
         {lastTheory ? (
           <div className="px-6 py-6">
-            <div className="mb-4 flex items-center gap-3">
+            <div className="fade-in mb-4 flex items-center gap-3">
               <span
-                className={`rounded px-3 py-1 text-xs font-semibold uppercase tracking-wider ${outcomeBadge?.style}`}
+                className={`rounded px-3 py-1 text-xs font-semibold uppercase tracking-widest ${outcomeBadge?.style}`}
               >
                 {outcomeBadge?.text}
               </span>
-              <span className="text-sm text-[var(--text-muted)]">
+              <span className="fade-in font-mono text-sm text-[var(--text-muted)]">
                 Score: {Math.round(lastTheory.score * 100)}%
               </span>
             </div>
@@ -96,39 +101,48 @@ export function SolutionModal({
               {lastTheory.momentResults.map((mr) => {
                 const moment = mystery.solution.moments.find((m) => m.id === mr.momentId);
                 const scoreColor =
-                  mr.score >= 0.7 ? "text-green-400" : mr.score >= 0.4 ? "text-amber-400" : "text-red-400";
+                  mr.score >= 0.7
+                    ? "text-[var(--accent-clue)]"
+                    : mr.score >= 0.4
+                      ? "text-amber-400"
+                      : "text-[var(--accent-danger)]";
                 const scoreIcon = mr.score >= 0.7 ? "✅" : mr.score >= 0.4 ? "🟡" : "❌";
                 return (
-                  <div key={mr.momentId} className="rounded bg-neutral-900 px-3 py-2">
+                  <div
+                    key={mr.momentId}
+                    className="rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2"
+                  >
                     <div className="flex items-center gap-2 text-xs">
                       <span>{scoreIcon}</span>
-                      <span className="text-[var(--text-muted)]">{moment?.time}</span>
-                      <span className={`font-medium ${scoreColor}`}>
+                      <span className="font-mono text-[var(--text-muted)]">{moment?.time}</span>
+                      <span className={`font-semibold ${scoreColor}`}>
                         {Math.round(mr.score * 100)}%
                       </span>
                     </div>
-                    <p className="mt-1 text-xs text-[var(--text-primary)]">{mr.feedback}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-[var(--text-primary)]">
+                      {mr.feedback}
+                    </p>
                   </div>
                 );
               })}
             </div>
 
             {/* Narrative */}
-            <div className="mb-6 whitespace-pre-line text-sm leading-relaxed text-[var(--text-primary)]">
+            <div className="narrative mb-6 whitespace-pre-line text-[var(--text-primary)]">
               {lastTheory.narrative}
             </div>
 
             {lastTheory.gameOver ? (
               <button
                 onClick={onClose}
-                className="w-full rounded bg-green-800 px-4 py-3 text-sm font-semibold text-green-100 transition-colors hover:bg-green-700"
+                className="fade-in w-full rounded border border-green-700/50 bg-green-900/40 px-4 py-3 text-sm font-semibold uppercase tracking-wider text-green-300 transition-colors hover:bg-green-900/60"
               >
                 Mystery Solved
               </button>
             ) : (
               <button
                 onClick={onClose}
-                className="w-full rounded bg-neutral-700 px-4 py-3 text-sm font-semibold text-[var(--text-primary)] transition-colors hover:bg-neutral-600"
+                className="w-full rounded border border-[var(--border-warm)] bg-[var(--bg-surface)] px-4 py-3 text-sm font-semibold uppercase tracking-wider text-[var(--text-secondary)] transition-colors hover:bg-neutral-800"
               >
                 Continue Investigating
               </button>
@@ -136,60 +150,80 @@ export function SolutionModal({
           </div>
         ) : (
           /* Timeline reconstruction form */
-          <div className="px-6 py-5 space-y-4">
-            <p className="text-xs text-[var(--text-muted)]">
+          <div className="px-6 py-5">
+            <p className="mb-5 text-xs text-[var(--text-muted)]">
               Fill in the gaps in the timeline. Known events are shown for context.
             </p>
 
-            {/* Timeline moments */}
-            {mystery.solution.moments.map((moment) => (
-              <div key={moment.id}>
-                {moment.isKnown ? (
-                  /* Known moment — read-only context */
-                  <div className="flex items-start gap-3 rounded bg-neutral-900/50 px-3 py-2">
-                    <span className="shrink-0 text-xs font-mono text-[var(--text-muted)]">
-                      {moment.time}
-                    </span>
-                    <span className="text-xs text-neutral-400">
-                      {moment.knownDescription}
-                    </span>
-                  </div>
-                ) : (
-                  /* Gap — player fills in */
-                  <div className="rounded border border-[var(--border-subtle)] px-3 py-3">
-                    <div className="mb-1.5 flex items-center gap-2">
-                      <span className="text-xs font-mono font-medium text-[var(--accent-clue)]">
-                        {moment.time}
-                      </span>
-                      <span className="text-xs text-[var(--text-primary)]">
-                        {moment.prompt}
-                      </span>
+            {/* Timeline — vertical line container */}
+            <div className="relative mb-5 space-y-3 pl-6">
+              {/* Vertical connecting line */}
+              <div
+                className="absolute left-[7px] top-2 bottom-2 w-[2px]"
+                style={{ background: "var(--border-warm)" }}
+              />
+
+              {mystery.solution.moments.map((moment) => (
+                <div key={moment.id} className="relative">
+                  {moment.isKnown ? (
+                    /* Known moment — read-only context */
+                    <div className="gold-border-left rounded-r bg-[var(--bg-surface)] px-3 py-2">
+                      {/* Gold dot on timeline */}
+                      <div
+                        className="absolute -left-[19px] top-3 h-3 w-3 rounded-full border-2 border-[var(--accent-clue)]"
+                        style={{ background: "var(--accent-clue)" }}
+                      />
+                      <div className="flex items-start gap-2">
+                        <span className="shrink-0 font-mono text-xs text-[var(--text-muted)]">
+                          {moment.time}
+                        </span>
+                        <span className="text-xs text-[var(--text-secondary)]">
+                          {moment.knownDescription}
+                        </span>
+                      </div>
                     </div>
-                    <textarea
-                      value={answers[moment.id] ?? ""}
-                      onChange={(e) =>
-                        setAnswers((prev) => ({ ...prev, [moment.id]: e.target.value }))
-                      }
-                      placeholder="What happened here?"
-                      rows={2}
-                      className="w-full rounded bg-[var(--bg-input)] px-3 py-2 font-mono text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none ring-1 ring-transparent transition-all focus:ring-amber-700"
-                    />
-                  </div>
-                )}
-              </div>
-            ))}
+                  ) : (
+                    /* Gap — player fills in */
+                    <div className="rounded border border-[var(--border-warm)] bg-[var(--bg-surface)] px-3 py-3">
+                      {/* Open circle on timeline */}
+                      <div
+                        className="absolute -left-[19px] top-3 h-3 w-3 rounded-full border-2 border-[var(--accent-clue)]"
+                        style={{ background: "var(--bg-panel)" }}
+                      />
+                      <div className="mb-1.5 flex items-center gap-2">
+                        <span className="font-mono text-xs font-medium text-[var(--accent-clue)]">
+                          {moment.time}
+                        </span>
+                        <span className="text-xs text-[var(--text-primary)]">
+                          {moment.prompt}
+                        </span>
+                      </div>
+                      <textarea
+                        value={answers[moment.id] ?? ""}
+                        onChange={(e) =>
+                          setAnswers((prev) => ({ ...prev, [moment.id]: e.target.value }))
+                        }
+                        placeholder="What happened here?"
+                        rows={2}
+                        className="ruled-lines w-full rounded bg-[var(--bg-input)] px-3 py-2 font-mono text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none ring-1 ring-transparent transition-all focus:ring-amber-700"
+                      />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
 
             {/* Evidence */}
             {discoveredClues.length > 0 && (
-              <div>
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-                  Cite your evidence
+              <div className="mb-5">
+                <label className="noir-header mb-2 block text-[var(--accent-clue)]">
+                  Cite Your Evidence
                 </label>
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   {discoveredClues.map((clue) => (
                     <label
                       key={clue.id}
-                      className="flex cursor-pointer items-start gap-2 rounded px-2 py-1.5 transition-colors hover:bg-neutral-800"
+                      className="flex cursor-pointer items-start gap-2 rounded border border-transparent px-2 py-1.5 transition-colors hover:border-[var(--border-warm)] hover:bg-[var(--bg-surface)]"
                     >
                       <input
                         type="checkbox"
@@ -214,9 +248,9 @@ export function SolutionModal({
               disabled={!canSubmit}
               className={`w-full rounded px-4 py-3 text-sm font-semibold uppercase tracking-wider transition-colors ${
                 canSubmit
-                  ? "bg-amber-700 text-white hover:bg-amber-600"
+                  ? "bg-[var(--accent-clue)] text-[var(--bg-primary)] hover:opacity-90"
                   : "cursor-not-allowed bg-neutral-800 text-neutral-600"
-              }`}
+              } ${loading ? "animate-pulse" : ""}`}
             >
               {loading ? "Evaluating..." : "Present Your Solution"}
             </button>
