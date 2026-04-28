@@ -18,17 +18,16 @@ function EventRow({ entry }: { entry: EventEntry }) {
   const isSolved = entry.type === "theory_solved";
   const isFailed = entry.type === "theory_wrong" || entry.type === "theory_close";
 
+  const borderClass = isClue
+    ? "border-l-[3px] border-l-[var(--accent-clue)]"
+    : isSolved
+      ? "border-l-[3px] border-l-emerald-600"
+      : isFailed
+        ? "border-l-[3px] border-l-[var(--accent-danger)]"
+        : "border-l-[3px] border-l-[var(--border-warm)]";
+
   return (
-    <div
-      className={[
-        "py-1.5 px-2 rounded",
-        isClue ? "bg-amber-950/40" : "",
-        isSolved ? "bg-green-950/40" : "",
-        isFailed ? "bg-red-950/30" : "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
-    >
+    <div className={["py-2 px-3 hover:bg-[#0f0e0d]", borderClass].join(" ")}>
       <div className="flex items-start gap-1.5">
         <span className="shrink-0 text-xs leading-5">{entry.icon}</span>
         <span
@@ -67,19 +66,22 @@ export function EventLog({ eventLog }: EventLogProps) {
   }, [eventLog.length]);
 
   return (
-    <div className="flex flex-col h-full bg-neutral-950">
+    <div className="flex flex-col h-full bg-[var(--bg-panel)]">
       {/* Header */}
-      <div className="shrink-0 px-3 py-2 border-b border-neutral-800">
-        <h2 className="text-xs font-semibold tracking-widest uppercase text-neutral-400">
-          Investigation Log
+      <div className="shrink-0 px-3 py-2 border-b border-[var(--border-subtle)]">
+        <h2
+          className="text-xs font-semibold tracking-[0.15em] uppercase text-[var(--text-muted)]"
+          style={{ fontVariant: "small-caps" }}
+        >
+          CASE FILE
         </h2>
       </div>
 
       {/* Scrollable event list */}
-      <div className="flex-1 overflow-y-auto px-2 py-2 space-y-0.5">
+      <div className="flex-1 overflow-y-auto py-1">
         {eventLog.length === 0 ? (
-          <p className="text-xs text-neutral-600 italic px-1 pt-1">
-            Your investigation has not yet begun.
+          <p className="text-xs text-[var(--text-muted)] italic px-3 pt-2">
+            No entries in the case file.
           </p>
         ) : (
           eventLog.map((entry, i) => <EventRow key={`${entry.timestamp}-${i}`} entry={entry} />)

@@ -5,15 +5,15 @@ import { MysterySelect } from "./components/MysterySelect";
 
 function LandingPage({ onStart }: { onStart: () => void }) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--bg-primary)] px-6">
-      <h1 className="mb-2 font-serif text-6xl tracking-widest text-[var(--text-primary)]">
+    <div className="vignette flex min-h-screen flex-col items-center justify-center bg-[var(--bg-primary)] px-6">
+      <h1 className="fade-in mb-3 font-serif text-8xl tracking-[0.25em] text-[var(--text-primary)]" style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}>
         MYSTERIUM
       </h1>
-      <p className="mb-10 text-sm tracking-wide text-[var(--text-muted)]">
-        An AI-powered interactive mystery investigation
+      <p className="fade-in mb-12 text-sm tracking-wide text-[var(--text-muted)]" style={{ animationDelay: "0.2s", animationFillMode: "both" }}>
+        Some truths are buried. Others are waiting to be found.
       </p>
 
-      <div className="mb-10 w-full max-w-md rounded border border-[var(--border-subtle)] bg-[var(--bg-panel)] p-6">
+      <div className="noir-panel gold-border-left mb-10 w-full max-w-md p-6">
         <ul className="space-y-1.5 text-xs text-[var(--text-muted)]">
           <li>📍 Explore locations and examine evidence</li>
           <li>💬 Talk to characters — they remember what you say</li>
@@ -24,7 +24,7 @@ function LandingPage({ onStart }: { onStart: () => void }) {
 
       <button
         onClick={onStart}
-        className="rounded border border-[var(--accent-clue)] bg-transparent px-8 py-3 text-sm font-semibold uppercase tracking-widest text-[var(--accent-clue)] transition-all hover:bg-[var(--accent-clue)] hover:text-[var(--bg-primary)]"
+        className="rounded border border-[var(--accent-clue)] bg-transparent px-8 py-3 text-sm font-semibold uppercase tracking-widest text-[var(--accent-clue)] transition-all hover:shadow-[0_0_15px_rgba(201,165,75,0.3)] hover:bg-[var(--accent-clue)] hover:text-[var(--bg-primary)]"
       >
         Begin Investigation
       </button>
