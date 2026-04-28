@@ -10,7 +10,7 @@
  */
 
 import { useRef, useEffect, useState, type KeyboardEvent } from "react";
-import type { Character } from "../../types/mystery";
+import type { ClientCharacter } from "../../types/client";
 import type { Conversation, NPCState } from "../../types/state";
 import { NarrativeText } from "./NarrativeText";
 
@@ -44,7 +44,7 @@ function moodEmoji(emotion: string): string {
 // ---------------------------------------------------------------------------
 
 interface ChatPanelProps {
-  character: Character;
+  character: ClientCharacter;
   conversation: Conversation | undefined;
   npcState: NPCState | undefined;
   /** Text currently streaming from the NPC. Null when idle. */

@@ -167,6 +167,7 @@ export interface ClientMystery {
   crimeDescription: string;
   characters: ClientCharacter[];
   locations: ClientLocation[];
+  clues: ClientClue[];
   contradictions: ClientContradiction[];
   redHerrings: ClientRedHerring[];
   solution: ClientSolution;
@@ -174,7 +175,7 @@ export interface ClientMystery {
   /**
    * Total number of clues in the mystery.
    * Allows the client to compute investigationProgress
-   * without having the full clues array.
+   * without needing the full (server-side) clue details.
    */
   totalClueCount: number;
 }
@@ -233,6 +234,16 @@ function stripLocation(l: Location): ClientLocation {
   };
 }
 
+function stripClue(c: Clue): ClientClue {
+  return {
+    id: c.id,
+    description: c.description,
+    type: c.type,
+    foundAt: c.foundAt,
+    foundVia: c.foundVia,
+  };
+}
+
 function stripContradiction(c: Contradiction): ClientContradiction {
   return {
     id: c.id,
@@ -283,6 +294,7 @@ export function stripMystery(mystery: Mystery): ClientMystery {
     crimeDescription: mystery.crimeDescription,
     characters: mystery.characters.map(stripCharacter),
     locations: mystery.locations.map(stripLocation),
+    clues: mystery.clues.map(stripClue),
     contradictions: mystery.contradictions.map(stripContradiction),
     redHerrings: mystery.redHerrings.map(stripRedHerring),
     solution: stripSolution(mystery.solution),
@@ -323,4 +335,55 @@ export function reconstructGameState(
     focus: clientState.focus,
     startedAt: clientState.startedAt,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Client-side derived state functions
+// ---------------------------------------------------------------------------
+
+/** Compute the set of clue IDs the player has discovered (client-side). */
+export function clientDiscoveredClueIds(state: ClientGameState): Set<string> {
+  const ids = new Set<string>();
+  for (const e of state.explorations) {
+    if (e.clueFound) ids.add(e.clueFound);
+  }
+  for (const c of state.conversations) {
+    for (const s of c.summaries) {
+      for (const id of s.cluesDiscovered) {
+        ids.add(id);
+      }
+    }
+  }
+  return ids;
+}
+
+/** Resolve discovered clue IDs to ClientClue objects. */
+export function clientDiscoveredClues(state: ClientGameState): ClientClue[] {
+  const ids = clientDiscoveredClueIds(state);
+  return state.mystery.clues.filter((c) => ids.has(c.id));
+}
+
+/** 0–1 progress through the evidence chain (client-side). */
+export function clientInvestigationProgress(state: ClientGameState): number {
+  const total = state.mystery.totalClueCount;
+  if (total === 0) return 0;
+  return clientDiscoveredClueIds(state).size / total;
+}
+
+/** Set of location IDs the player has visited (client-side). */
+export function clientVisitedLocationIds(state: ClientGameState): Set<string> {
+  return new Set(state.explorations.map((e) => e.locationId));
+}
+
+/** Set of character IDs the player has talked to (client-side). */
+export function clientInterviewedCharacterIds(state: ClientGameState): Set<string> {
+  return new Set(state.conversations.map((c) => c.characterId));
+}
+
+/** Get the conversation for a specific character (client-side). */
+export function clientGetConversation(
+  state: ClientGameState,
+  characterId: string,
+): ClientGameState["conversations"][number] | undefined {
+  return state.conversations.find((c) => c.characterId === characterId);
 }

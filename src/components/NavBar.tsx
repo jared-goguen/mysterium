@@ -5,16 +5,15 @@
  * and the accusation button.
  */
 
-import type { Mystery, Character, Location } from "../../types/mystery";
+import type { ClientMystery, ClientClue } from "../../types/client";
 import type { FocusTarget } from "../../types/state";
-import type { Clue } from "../../types/mystery";
 
 interface NavBarProps {
-  mystery: Mystery;
+  mystery: ClientMystery;
   focus: FocusTarget;
   visitedLocations: Set<string>;
   interviewedCharacters: Set<string>;
-  discoveredClues: Clue[];
+  discoveredClues: ClientClue[];
   npcStates: Record<string, { emotion: string; cooperativeness: number }>;
   onMoveTo: (locationId: string) => void;
   onTalkTo: (characterId: string) => void;

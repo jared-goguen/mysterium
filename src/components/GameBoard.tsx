@@ -5,8 +5,7 @@
  */
 
 import { useState, useCallback } from "react";
-import type { GameState } from "../../types/state";
-import type { Mystery, Clue } from "../../types/mystery";
+import type { ClientGameState, ClientMystery, ClientClue } from "../../types/client";
 import type { EventEntry } from "../../lib/events";
 import type { FocusTarget } from "../../types/actions";
 import { NavBar } from "./NavBar";
@@ -17,11 +16,11 @@ import { SolutionModal } from "./SolutionModal";
 
 export interface GameBoardProps {
   game: {
-    gameState: GameState | null;
-    mystery: Mystery | null;
+    gameState: ClientGameState | null;
+    mystery: ClientMystery | null;
     notes: string;
     eventLog: EventEntry[];
-    discoveredClues: Clue[];
+    discoveredClues: ClientClue[];
     visitedLocations: Set<string>;
     interviewedCharacters: Set<string>;
     progress: number;

@@ -6,18 +6,18 @@
  * Includes a context header showing current location/character name.
  */
 
-import type { Mystery, Clue } from "../../types/mystery";
+import type { ClientMystery, ClientClue } from "../../types/client";
 import type { FocusTarget, Exploration, Conversation, NPCState } from "../../types/state";
 import { LocationView } from "./LocationView";
 import { ChatPanel } from "./ChatPanel";
 
 interface MainPanelProps {
-  mystery: Mystery;
+  mystery: ClientMystery;
   focus: FocusTarget;
   explorations: Exploration[];
   conversations: Conversation[];
   npcStates: Record<string, NPCState>;
-  discoveredClues: Clue[];
+  discoveredClues: ClientClue[];
   streamingText: string | null;
   loading: boolean;
   pendingMessage: string | null;

@@ -4,28 +4,33 @@
  * Four actions: focus, interact, solve, giveUp.
  * FOCUS auto-summarizes when leaving a character.
  * INTERACT dispatches to /api/examine or /api/chat based on focus context.
+ *
+ * Client stores ClientGameState (no sensitive mystery data).
+ * API calls send mysteryId + client state; server reconstructs full state.
  */
 
 import { useReducer, useCallback, useMemo, useEffect } from "react";
-import blueParrot from "../../examples/blue-parrot";
-import { createGameState } from "../../lib/initializers";
 import {
   applyFocus,
   applyInteract,
   applySolve,
   applyGiveUp,
 } from "../../lib/reducer";
-import {
-  discoveredClues,
-  visitedLocationIds,
-  interviewedCharacterIds,
-  investigationProgress,
-  getConversation,
-} from "../../types/state";
 import { deriveEventLog } from "../../lib/events";
 import type { EventEntry } from "../../lib/events";
 import type { GameState } from "../../types/state";
-import type { Mystery, Clue } from "../../types/mystery";
+import type {
+  ClientGameState,
+  ClientMystery,
+  ClientClue,
+} from "../../types/client";
+import {
+  clientDiscoveredClues,
+  clientVisitedLocationIds,
+  clientInterviewedCharacterIds,
+  clientInvestigationProgress,
+  clientGetConversation,
+} from "../../types/client";
 import type {
   FocusResult,
   ExamineInteractResult,
@@ -39,7 +44,7 @@ import type {
 // ---------------------------------------------------------------------------
 
 interface HookState {
-  game: GameState | null;
+  game: ClientGameState | null;
   notes: string;
   streamingText: string | null;
   loading: boolean;
@@ -47,8 +52,7 @@ interface HookState {
 }
 
 type HookAction =
-  | { type: "START_GAME"; mystery: Mystery }
-  | { type: "SET_GAME"; game: GameState }
+  | { type: "SET_GAME"; game: ClientGameState }
   | { type: "UPDATE_NOTES"; text: string }
   | { type: "SET_STREAMING"; text: string | null }
   | { type: "SET_LOADING"; loading: boolean }
@@ -56,8 +60,6 @@ type HookAction =
 
 function hookReducer(state: HookState, action: HookAction): HookState {
   switch (action.type) {
-    case "START_GAME":
-      return { game: createGameState(action.mystery), notes: "", streamingText: null, loading: false, error: null };
     case "SET_GAME":
       return { ...state, game: action.game, error: null };
     case "UPDATE_NOTES":
@@ -81,7 +83,7 @@ function loadPersistedState(): HookState | null {
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY);
     if (raw) {
-      const parsed = JSON.parse(raw) as { game: GameState | null; notes: string };
+      const parsed = JSON.parse(raw) as { game: ClientGameState | null; notes: string };
       return { game: parsed.game, notes: parsed.notes, streamingText: null, loading: false, error: null };
     }
   } catch { /* start fresh */ }
@@ -111,17 +113,41 @@ async function apiPost<T>(url: string, body: unknown): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+/**
+ * Build the API request body for game routes.
+ * Sends mysteryId + full client state (server extracts what it needs).
+ */
+function apiBody(game: ClientGameState, extra?: Record<string, unknown>) {
+  return { mysteryId: game.mystery.id, state: game, ...extra };
+}
+
+/**
+ * Cast ClientGameState to GameState for the pure reducer functions.
+ *
+ * Safe because the reducer apply* functions never access state.mystery —
+ * they only touch mutable fields (explorations, conversations, theories,
+ * npcStates, focus, phase). The mystery field passes through unchanged.
+ */
+function asGameState(client: ClientGameState): GameState {
+  return client as unknown as GameState;
+}
+
+/** Cast reducer output back to ClientGameState. */
+function asClientState(game: GameState): ClientGameState {
+  return game as unknown as ClientGameState;
+}
+
 // ---------------------------------------------------------------------------
 // Return type
 // ---------------------------------------------------------------------------
 
 export interface GameStateHook {
-  gameState: GameState | null;
+  gameState: ClientGameState | null;
   isPlaying: boolean;
-  mystery: Mystery | null;
+  mystery: ClientMystery | null;
   notes: string;
   eventLog: EventEntry[];
-  discoveredClues: Clue[];
+  discoveredClues: ClientClue[];
   visitedLocations: Set<string>;
   interviewedCharacters: Set<string>;
   progress: number;
@@ -141,6 +167,8 @@ export interface GameStateHook {
 // The hook
 // ---------------------------------------------------------------------------
 
+const DEFAULT_MYSTERY_ID = "blue-parrot-001";
+
 export function useGameState(): GameStateHook {
   const initial: HookState = loadPersistedState() ?? {
     game: null, notes: "", streamingText: null, loading: false, error: null,
@@ -151,10 +179,19 @@ export function useGameState(): GameStateHook {
   useEffect(() => { persistState(state); }, [state.game, state.notes]);
 
   // -- Start game --
+  // Calls /api/start to get ClientMystery + initial ClientGameState from the server.
 
   const startGame = useCallback(() => {
     sessionStorage.removeItem(STORAGE_KEY);
-    dispatch({ type: "START_GAME", mystery: blueParrot });
+    dispatch({ type: "SET_LOADING", loading: true });
+    apiPost<{ clientMystery: ClientMystery; state: ClientGameState }>("/api/start", {
+      mysteryId: DEFAULT_MYSTERY_ID,
+    })
+      .then(({ state: initialState }) => {
+        dispatch({ type: "SET_GAME", game: initialState });
+        dispatch({ type: "SET_LOADING", loading: false });
+      })
+      .catch((err) => dispatch({ type: "SET_ERROR", error: err.message }));
   }, []);
 
   // -- Focus (navigate) --
@@ -162,62 +199,56 @@ export function useGameState(): GameStateHook {
 
   const doFocus = useCallback((target: FocusTarget) => {
     if (!state.game) return;
-    const gameState = state.game;
+    const game = state.game;
 
     // Check if we're leaving a character with messages
     const leavingCharacter =
-      gameState.focus.type === "character" &&
-      (target.type !== "character" || target.id !== gameState.focus.id);
+      game.focus.type === "character" &&
+      (target.type !== "character" || target.id !== game.focus.id);
 
     if (leavingCharacter) {
-      const characterId = gameState.focus.id;
-      const conversation = getConversation(gameState, characterId);
+      const characterId = game.focus.id;
+      const conversation = clientGetConversation(game, characterId);
       const hasMessages = conversation && conversation.messages.length > 0;
-      // Only summarize if there are unsummarized messages
       const lastSummaryCount = conversation?.summaries.length ?? 0;
       const needsSummary = hasMessages && conversation.messages.length > lastSummaryCount * 2;
 
       if (needsSummary) {
         dispatch({ type: "SET_LOADING", loading: true });
-        apiPost<FocusResult["conversationEnded"]>("/api/summarize", {
-          gameState,
-          characterId,
-        })
+        apiPost<FocusResult["conversationEnded"]>("/api/summarize", apiBody(game, { characterId }))
           .then((conversationEnded) => {
             const focusResult: FocusResult = { conversationEnded: conversationEnded ?? undefined };
-            const next = applyFocus(gameState, { type: "FOCUS", target }, focusResult, Date.now());
-            dispatch({ type: "SET_GAME", game: next });
+            const next = applyFocus(asGameState(game), { type: "FOCUS", target }, focusResult, Date.now());
+            dispatch({ type: "SET_GAME", game: asClientState(next) });
             dispatch({ type: "SET_LOADING", loading: false });
           })
           .catch((err) => {
-            // Even on error, still move focus
-            const next = applyFocus(gameState, { type: "FOCUS", target }, undefined, Date.now());
-            dispatch({ type: "SET_GAME", game: next });
+            const next = applyFocus(asGameState(game), { type: "FOCUS", target }, undefined, Date.now());
+            dispatch({ type: "SET_GAME", game: asClientState(next) });
             dispatch({ type: "SET_ERROR", error: err.message });
           });
         return;
       }
     }
 
-    // No summarization needed — just move focus
-    const next = applyFocus(gameState, { type: "FOCUS", target }, undefined, Date.now());
-    dispatch({ type: "SET_GAME", game: next });
+    const next = applyFocus(asGameState(game), { type: "FOCUS", target }, undefined, Date.now());
+    dispatch({ type: "SET_GAME", game: asClientState(next) });
   }, [state.game]);
 
   // -- Interact (examine or speak) --
 
   const interact = useCallback((message: string) => {
     if (!state.game) return;
-    const gameState = state.game;
+    const game = state.game;
     const action = { type: "INTERACT" as const, message };
 
-    if (gameState.focus.type === "location") {
+    if (game.focus.type === "location") {
       // Examine — non-streaming
       dispatch({ type: "SET_LOADING", loading: true });
-      apiPost<ExamineInteractResult>("/api/examine", { gameState, message })
+      apiPost<ExamineInteractResult>("/api/examine", apiBody(game, { message }))
         .then((result) => {
-          const next = applyInteract(gameState, action, result, Date.now());
-          dispatch({ type: "SET_GAME", game: next });
+          const next = applyInteract(asGameState(game), action, result, Date.now());
+          dispatch({ type: "SET_GAME", game: asClientState(next) });
           dispatch({ type: "SET_LOADING", loading: false });
         })
         .catch((err) => dispatch({ type: "SET_ERROR", error: err.message }));
@@ -229,7 +260,7 @@ export function useGameState(): GameStateHook {
       fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ gameState, message }),
+        body: JSON.stringify(apiBody(game, { message })),
       })
         .then(async (res) => {
           if (!res.ok || !res.body) {
@@ -271,8 +302,8 @@ export function useGameState(): GameStateHook {
           }
 
           const result: SpeakInteractResult = { context: "character", response: fullText, cluesRevealed };
-          const next = applyInteract(gameState, action, result, Date.now());
-          dispatch({ type: "SET_GAME", game: next });
+          const next = applyInteract(asGameState(game), action, result, Date.now());
+          dispatch({ type: "SET_GAME", game: asClientState(next) });
           dispatch({ type: "SET_STREAMING", text: null });
           dispatch({ type: "SET_LOADING", loading: false });
         })
@@ -288,18 +319,18 @@ export function useGameState(): GameStateHook {
   const solve = useCallback(
     (answers: Record<string, string>, evidenceCited: string[]) => {
       if (!state.game) return;
-      const gameState = state.game;
+      const game = state.game;
 
       dispatch({ type: "SET_LOADING", loading: true });
-      apiPost<SolveResult>("/api/solve", { gameState, answers, evidenceCited })
+      apiPost<SolveResult>("/api/solve", apiBody(game, { answers, evidenceCited }))
         .then((result) => {
           const next = applySolve(
-            gameState,
+            asGameState(game),
             { type: "SOLVE", answers, evidenceCited },
             result,
             Date.now(),
           );
-          dispatch({ type: "SET_GAME", game: next });
+          dispatch({ type: "SET_GAME", game: asClientState(next) });
           dispatch({ type: "SET_LOADING", loading: false });
         })
         .catch((err) => dispatch({ type: "SET_ERROR", error: err.message }));
@@ -311,13 +342,13 @@ export function useGameState(): GameStateHook {
 
   const doGiveUp = useCallback(() => {
     if (!state.game) return;
-    const gameState = state.game;
+    const game = state.game;
 
     dispatch({ type: "SET_LOADING", loading: true });
-    apiPost<{ narrative: string }>("/api/give-up", { gameState })
+    apiPost<{ narrative: string }>("/api/give-up", apiBody(game))
       .then(() => {
-        const next = applyGiveUp(gameState, { type: "GIVE_UP" }, undefined);
-        dispatch({ type: "SET_GAME", game: next });
+        const next = applyGiveUp(asGameState(game), { type: "GIVE_UP" }, undefined);
+        dispatch({ type: "SET_GAME", game: asClientState(next) });
         dispatch({ type: "SET_LOADING", loading: false });
       })
       .catch((err) => dispatch({ type: "SET_ERROR", error: err.message }));
@@ -329,12 +360,12 @@ export function useGameState(): GameStateHook {
     dispatch({ type: "UPDATE_NOTES", text });
   }, []);
 
-  // -- Derived state --
+  // -- Derived state (uses client-side functions) --
 
   const derived = useMemo(() => {
     if (!state.game) {
       return {
-        discoveredClues: [] as Clue[],
+        discoveredClues: [] as ClientClue[],
         visitedLocations: new Set<string>(),
         interviewedCharacters: new Set<string>(),
         progress: 0,
@@ -342,11 +373,12 @@ export function useGameState(): GameStateHook {
       };
     }
     return {
-      discoveredClues: discoveredClues(state.game),
-      visitedLocations: visitedLocationIds(state.game),
-      interviewedCharacters: interviewedCharacterIds(state.game),
-      progress: investigationProgress(state.game),
-      eventLog: deriveEventLog(state.game),
+      discoveredClues: clientDiscoveredClues(state.game),
+      visitedLocations: clientVisitedLocationIds(state.game),
+      interviewedCharacters: clientInterviewedCharacterIds(state.game),
+      progress: clientInvestigationProgress(state.game),
+      // deriveEventLog only accesses explorations, conversations, theories — safe with client state
+      eventLog: deriveEventLog(state.game as unknown as GameState),
     };
   }, [state.game]);
 

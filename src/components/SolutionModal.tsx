@@ -6,12 +6,12 @@
  */
 
 import { useState } from "react";
-import type { Mystery, Clue } from "../../types/mystery";
+import type { ClientMystery, ClientClue } from "../../types/client";
 import type { Theory } from "../../types/state";
 
 interface SolutionModalProps {
-  mystery: Mystery;
-  discoveredClues: Clue[];
+  mystery: ClientMystery;
+  discoveredClues: ClientClue[];
   loading: boolean;
   lastTheory: Theory | null;
   onSolve: (answers: Record<string, string>, evidenceCited: string[]) => void;

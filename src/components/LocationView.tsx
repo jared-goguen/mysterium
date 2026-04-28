@@ -7,7 +7,7 @@
  */
 
 import { useState, useRef, useEffect } from "react";
-import type { Location, Clue } from "../../types/mystery";
+import type { ClientLocation, ClientClue } from "../../types/client";
 import { NarrativeText } from "./NarrativeText";
 
 interface ExamineResult {
@@ -17,9 +17,9 @@ interface ExamineResult {
 }
 
 interface LocationViewProps {
-  location: Location;
+  location: ClientLocation;
   /** Full clue objects the player has already discovered. */
-  discoveredClues: Clue[];
+  discoveredClues: ClientClue[];
   /** Previous examination results at this location. */
   examineHistory: ExamineResult[];
   /** Characters present at this location (name + id). */
