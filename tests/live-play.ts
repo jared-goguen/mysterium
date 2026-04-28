@@ -68,7 +68,7 @@ async function main() {
   // 1. FOCUS → Victor's Office
   // -----------------------------------------------------------------------
   header("1. FOCUS → Victor's Office");
-  state = applyFocus(state, { type: "FOCUS", target: { type: "location", id: "victors-office" } });
+  state = applyFocus(state, { type: "FOCUS", target: { type: "location", id: "victors-office" } }, undefined, Date.now());
   console.log(`  📍 Now at: ${state.focus.id}`);
 
   // -----------------------------------------------------------------------
@@ -82,7 +82,7 @@ async function main() {
   console.log(`\n  Narrative:\n${indent(result1.narrative)}`);
   console.log(`\n  Clue found: ${result1.clueFound ?? "none"}`);
   check("Found clue-movie-stub", result1.clueFound === "clue-movie-stub");
-  state = applyInteract(state, interact1, result1);
+  state = applyInteract(state, interact1, result1, Date.now());
 
   // -----------------------------------------------------------------------
   // 3. INTERACT → examine the air (expect clue-perfume)
@@ -93,20 +93,20 @@ async function main() {
   console.log(`\n  Narrative:\n${indent(result2.narrative)}`);
   console.log(`\n  Clue found: ${result2.clueFound ?? "none"}`);
   check("Found clue-perfume", result2.clueFound === "clue-perfume");
-  state = applyInteract(state, interact2, result2);
+  state = applyInteract(state, interact2, result2, Date.now());
 
   // -----------------------------------------------------------------------
   // 4. FOCUS → Back Alley, INTERACT → dumpster (expect clue-rat-poison)
   // -----------------------------------------------------------------------
   header("4. FOCUS → Back Alley, INTERACT → the dumpster");
-  state = applyFocus(state, { type: "FOCUS", target: { type: "location", id: "back-alley" } });
+  state = applyFocus(state, { type: "FOCUS", target: { type: "location", id: "back-alley" } }, undefined, Date.now());
 
   const interact3: InteractAction = { type: "INTERACT", message: "the dumpster" };
   const result3 = await examine(client, state, interact3);
   console.log(`\n  Narrative:\n${indent(result3.narrative)}`);
   console.log(`\n  Clue found: ${result3.clueFound ?? "none"}`);
   check("Found clue-rat-poison", result3.clueFound === "clue-rat-poison");
-  state = applyInteract(state, interact3, result3);
+  state = applyInteract(state, interact3, result3, Date.now());
 
   // -----------------------------------------------------------------------
   // 5. INTERACT → fire escape (expect NO clue)
@@ -117,13 +117,13 @@ async function main() {
   console.log(`\n  Narrative:\n${indent(result4.narrative)}`);
   console.log(`\n  Clue found: ${result4.clueFound ?? "none"}`);
   check("No clue found", result4.clueFound === null);
-  state = applyInteract(state, interact4, result4);
+  state = applyInteract(state, interact4, result4, Date.now());
 
   // -----------------------------------------------------------------------
   // 6. FOCUS → Eddie (conversation)
   // -----------------------------------------------------------------------
   header("6. FOCUS → Eddie Sato");
-  state = applyFocus(state, { type: "FOCUS", target: { type: "character", id: "eddie" } });
+  state = applyFocus(state, { type: "FOCUS", target: { type: "character", id: "eddie" } }, undefined, Date.now());
 
   // -----------------------------------------------------------------------
   // 7. INTERACT → ask about Dolores (streaming)
@@ -140,7 +140,7 @@ async function main() {
     process.stdout.write(delta);
   });
   console.log(`\n\n  Clues revealed: ${speakResult1.cluesRevealed.length > 0 ? speakResult1.cluesRevealed.join(", ") : "none"}`);
-  state = applyInteract(state, speak1, speakResult1);
+  state = applyInteract(state, speak1, speakResult1, Date.now());
 
   // -----------------------------------------------------------------------
   // 8. INTERACT → press about insurance (should reveal clue-insurance)
@@ -157,7 +157,7 @@ async function main() {
   });
   console.log(`\n\n  Clues revealed: ${speakResult2.cluesRevealed.length > 0 ? speakResult2.cluesRevealed.join(", ") : "none"}`);
   check("Revealed clue-insurance", speakResult2.cluesRevealed.includes("clue-insurance"));
-  state = applyInteract(state, speak2, speakResult2);
+  state = applyInteract(state, speak2, speakResult2, Date.now());
 
   // -----------------------------------------------------------------------
   // 9. FOCUS away → auto-summarize conversation
@@ -173,6 +173,7 @@ async function main() {
     state,
     { type: "FOCUS", target: { type: "location", id: "main-floor" } },
     { conversationEnded: summaryResult },
+    Date.now(),
   );
 
   // -----------------------------------------------------------------------
@@ -210,7 +211,7 @@ async function main() {
   check("Outcome is solved", solveResult.outcome === "solved");
   check("Game over", solveResult.gameOver === true);
 
-  state = applySolve(state, solveAction, solveResult);
+  state = applySolve(state, solveAction, solveResult, Date.now());
 
   // -----------------------------------------------------------------------
   // Summary

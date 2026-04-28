@@ -370,6 +370,7 @@ describe("investigationProgress", () => {
       freshState(),
       { type: "INTERACT", message: "trash" },
       { context: "location", narrative: "...", clueFound: "clue-movie-stub" },
+      1000,
     );
     expect(investigationProgress(state)).toBeCloseTo(1 / 6);
   });
@@ -389,6 +390,7 @@ describe("deriveEventLog", () => {
       freshState(),
       { type: "INTERACT", message: "the bar" },
       { context: "location", narrative: "Nothing.", clueFound: null },
+      1000,
     );
     const log = deriveEventLog(state);
     expect(log).toHaveLength(1);
@@ -400,6 +402,7 @@ describe("deriveEventLog", () => {
       freshState(),
       { type: "INTERACT", message: "trash" },
       { context: "location", narrative: "Stub!", clueFound: "clue-movie-stub" },
+      1000,
     );
     const log = deriveEventLog(state);
     expect(log[0]!.type).toBe("examine_clue");
@@ -424,6 +427,7 @@ describe("serialize / deserialize", () => {
       freshState(),
       { type: "INTERACT", message: "trash" },
       { context: "location", narrative: "...", clueFound: "clue-movie-stub" },
+      1000,
     );
     const restored = deserialize(serialize(state));
     expect(discoveredClueIds(restored).has("clue-movie-stub")).toBe(true);
@@ -439,25 +443,25 @@ describe("full evidence chain", () => {
     let state = freshState();
 
     // Move to office, find 2 clues
-    state = applyFocus(state, { type: "FOCUS", target: { type: "location", id: "victors-office" } });
+    state = applyFocus(state, { type: "FOCUS", target: { type: "location", id: "victors-office" } }, undefined, 1000);
     state = applyInteract(state, { type: "INTERACT", message: "the trash bin" }, {
       context: "location", narrative: "Movie stub...", clueFound: "clue-movie-stub",
-    });
+    }, 2000);
     state = applyInteract(state, { type: "INTERACT", message: "the air" }, {
       context: "location", narrative: "Shalimar...", clueFound: "clue-perfume",
-    });
+    }, 3000);
 
     // Move to alley, find 1 clue
-    state = applyFocus(state, { type: "FOCUS", target: { type: "location", id: "back-alley" } });
+    state = applyFocus(state, { type: "FOCUS", target: { type: "location", id: "back-alley" } }, undefined, 4000);
     state = applyInteract(state, { type: "INTERACT", message: "the dumpster" }, {
       context: "location", narrative: "Rat poison receipt...", clueFound: "clue-rat-poison",
-    });
+    }, 5000);
 
     // Talk to Eddie, get testimonial clue via summary
-    state = applyFocus(state, { type: "FOCUS", target: { type: "character", id: "eddie" } });
+    state = applyFocus(state, { type: "FOCUS", target: { type: "character", id: "eddie" } }, undefined, 6000);
     state = applyInteract(state, { type: "INTERACT", message: "Tell me about Dolores" }, {
       context: "character", response: "She asked about insurance...", cluesRevealed: ["clue-insurance"],
-    });
+    }, 7000);
     state = applyFocus(
       state,
       { type: "FOCUS", target: { type: "location", id: "main-floor" } },
@@ -475,6 +479,7 @@ describe("full evidence chain", () => {
           npcStateUpdates: { eddie: "anxious" },
         },
       },
+      8000,
     );
 
     // Verify all 4 chain clues found
@@ -511,6 +516,7 @@ describe("full evidence chain", () => {
         npcStateChanges: { dolores: "defeated", eddie: "devastated" },
         gameOver: true,
       },
+      9000,
     );
 
     expect(state.phase).toBe("solved");
