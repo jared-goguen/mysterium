@@ -25,10 +25,14 @@ export function MysterySelect({ onSelect }: MysterySelectProps) {
     fetch("/api/mysteries")
       .then(async (res) => {
         if (!res.ok) {
-          const err = (await res.json().catch(() => ({ error: res.statusText }))) as {
+          const err = (await res.json().catch(() => ({
+            error: res.statusText,
+          }))) as {
             error?: string;
           };
-          throw new Error(err.error ?? `Failed to load mysteries: ${res.status}`);
+          throw new Error(
+            err.error ?? `Failed to load mysteries: ${res.status}`,
+          );
         }
         return res.json() as Promise<MysteryListItem[]>;
       })
@@ -51,12 +55,22 @@ export function MysterySelect({ onSelect }: MysterySelectProps) {
   }, []);
 
   return (
-    <div className="flex min-h-screen flex-col items-center bg-[var(--bg-primary)] px-6 py-16">
-      <h1 className="mb-2 font-serif text-5xl tracking-widest text-[var(--text-primary)]">
+    <div className="vignette flex min-h-screen flex-col items-center bg-[var(--bg-primary)] px-6 py-16">
+      <h1
+        className="fade-in mb-2 font-serif text-5xl tracking-[0.2em] text-[var(--text-primary)]"
+        style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+      >
         MYSTERIUM
       </h1>
-      <p className="mb-12 text-sm tracking-wide text-[var(--text-muted)]">
-        Choose your mystery
+      <p
+        className="fade-in mb-14 font-serif text-sm italic tracking-wide text-[var(--text-muted)]"
+        style={{
+          animationDelay: "0.15s",
+          animationFillMode: "both",
+          fontFamily: "Georgia, 'Times New Roman', serif",
+        }}
+      >
+        Choose your mystery wisely. Each case leaves its mark.
       </p>
 
       {error && (
@@ -66,16 +80,19 @@ export function MysterySelect({ onSelect }: MysterySelectProps) {
       )}
 
       {loading ? (
-        <div className="grid w-full max-w-2xl grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid w-full max-w-2xl grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }, (_, i) => (
             <div
               key={i}
               className="h-48 animate-pulse rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-panel)]"
+              style={{
+                boxShadow: "0 0 8px rgba(201, 165, 75, 0.08)",
+              }}
             />
           ))}
         </div>
       ) : (
-        <div className="grid w-full max-w-2xl grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid w-full max-w-2xl grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {mysteries.map((mystery) => (
             <MysteryCard
               key={mystery.id}

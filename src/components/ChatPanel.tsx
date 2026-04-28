@@ -101,29 +101,29 @@ export function ChatPanel({
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-[var(--border-subtle)] bg-neutral-900 px-5 py-3">
+      <div className="flex items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--bg-panel)] px-5 py-3">
         <div className="flex items-center gap-3">
-          <span className="text-xl" title={`Mood: ${emotion}`}>
-            {moodEmoji(emotion)}
-          </span>
           <div>
-            <h3 className="font-semibold text-[var(--text-primary)]">
+            <h3 className="font-semibold tracking-wide text-[var(--text-primary)]" style={{ fontFamily: "Georgia, serif", fontSize: "1.05rem" }}>
               {character.name}
             </h3>
-            <p className="text-xs text-[var(--text-muted)]">
+            <p className="text-xs italic text-[var(--text-muted)]">
+              {moodEmoji(emotion) ? `*${emotion}*` : `*${emotion}*`}
+            </p>
+            <p className="text-xs text-[var(--text-muted)] opacity-70">
               {character.personality}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-4">
-          {/* Cooperativeness bar */}
+          {/* Rapport bar */}
           <div className="hidden items-center gap-2 sm:flex">
-            <span className="text-xs text-[var(--text-muted)]">Cooperative</span>
+            <span className="text-xs text-[var(--text-muted)]">Rapport</span>
             <div className="h-1.5 w-16 overflow-hidden rounded-full bg-neutral-800">
               <div
-                className="h-full rounded-full bg-amber-600 transition-all duration-500"
-                style={{ width: `${rapport}%` }}
+                className="h-full rounded-full transition-all duration-500"
+                style={{ width: `${rapport}%`, background: `linear-gradient(to right, transparent, var(--accent-clue))` }}
               />
             </div>
           </div>
@@ -132,9 +132,9 @@ export function ChatPanel({
           <button
             onClick={onEndConversation}
             disabled={loading}
-            className="flex items-center gap-1 rounded px-3 py-1.5 text-xs text-[var(--text-muted)] transition-colors hover:bg-neutral-800 hover:text-[var(--text-primary)] disabled:opacity-40"
+            className="flex items-center gap-1 rounded px-3 py-1.5 text-xs text-[var(--text-muted)] transition-colors hover:bg-[var(--border-warm)] hover:text-[var(--accent-clue)] disabled:opacity-40"
           >
-            ← Back
+            ← Walk away
           </button>
         </div>
       </div>
@@ -143,7 +143,7 @@ export function ChatPanel({
       <div className="flex-1 overflow-y-auto px-5 py-4">
         {messages.length === 0 && streamingText === null ? (
           <div className="flex h-full items-center justify-center">
-            <p className="max-w-sm text-center text-sm italic text-[var(--text-muted)]" style={{ fontFamily: "Georgia, serif" }}>
+            <p className="fade-in max-w-sm text-center italic text-[var(--text-muted)]" style={{ fontFamily: "Georgia, serif", fontSize: "0.95rem", lineHeight: "1.7" }}>
               {character.name} watches you warily. The silence stretches between you like a taut wire. Ask your first question.
             </p>
           </div>

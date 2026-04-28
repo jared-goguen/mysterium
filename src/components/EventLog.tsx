@@ -26,8 +26,16 @@ function EventRow({ entry }: { entry: EventEntry }) {
         ? "border-l-[3px] border-l-[var(--accent-danger)]"
         : "border-l-[3px] border-l-[var(--border-warm)]";
 
+  const bgTint = isClue
+    ? "bg-amber-950/20"
+    : isSolved
+      ? "bg-emerald-950/20"
+      : isFailed
+        ? "bg-red-950/20"
+        : "";
+
   return (
-    <div className={["py-2 px-3 hover:bg-[#0f0e0d]", borderClass].join(" ")}>
+    <div className={["py-2 px-3 hover:bg-[var(--bg-surface)]", borderClass, bgTint].join(" ")}>
       <div className="flex items-start gap-1.5">
         <span className="shrink-0 text-xs leading-5">{entry.icon}</span>
         <span
@@ -81,7 +89,7 @@ export function EventLog({ eventLog }: EventLogProps) {
       <div className="flex-1 overflow-y-auto py-1">
         {eventLog.length === 0 ? (
           <p className="text-xs text-[var(--text-muted)] italic px-3 pt-2">
-            No entries in the case file.
+            The investigation awaits...
           </p>
         ) : (
           eventLog.map((entry, i) => <EventRow key={`${entry.timestamp}-${i}`} entry={entry} />)
