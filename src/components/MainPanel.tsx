@@ -6,14 +6,16 @@
  * Includes a context header showing current location/character name.
  */
 
-import type { ClientMystery, ClientClue } from "../../types/client";
+import type { ClientMystery, ClientClue, ClientGameState } from "../../types/client";
 import type { FocusTarget, Exploration, Conversation, NPCState } from "../../types/state";
+import { clientAvailableExaminables } from "../../types/client";
 import { LocationView } from "./LocationView";
 import { ChatPanel } from "./ChatPanel";
 
 interface MainPanelProps {
   mystery: ClientMystery;
   focus: FocusTarget;
+  gameState: ClientGameState | null;
   explorations: Exploration[];
   conversations: Conversation[];
   npcStates: Record<string, NPCState>;
@@ -27,7 +29,7 @@ interface MainPanelProps {
   onEndConversation: () => void;
 }
 
-export function MainPanel({ mystery, focus, explorations, conversations, npcStates, discoveredClues, streamingText, loading, pendingMessage, onExamine, onTalkTo, onSendMessage, onEndConversation }: MainPanelProps) {
+export function MainPanel({ mystery, focus, gameState, explorations, conversations, npcStates, discoveredClues, streamingText, loading, pendingMessage, onExamine, onTalkTo, onSendMessage, onEndConversation }: MainPanelProps) {
   const contextName =
     focus.type === "location"
       ? mystery.locations.find((l) => l.id === focus.id)?.name ?? "Unknown Location"
@@ -67,6 +69,11 @@ export function MainPanel({ mystery, focus, explorations, conversations, npcStat
                 id: cid,
                 name: mystery.characters.find((c) => c.id === cid)?.name ?? cid,
               })) ?? []}
+            availableExaminables={
+              gameState !== null
+                ? clientAvailableExaminables(gameState, focus.id)
+                : []
+            }
             onExamine={onExamine}
             onTalkTo={onTalkTo}
           />

@@ -7,7 +7,7 @@
  */
 
 import { useState, useRef, useEffect } from "react";
-import type { ClientLocation, ClientClue } from "../../types/client";
+import type { ClientLocation, ClientClue, ClientExaminable } from "../../types/client";
 import { NarrativeText } from "./NarrativeText";
 
 interface ExamineResult {
@@ -24,6 +24,8 @@ interface LocationViewProps {
   examineHistory: ExamineResult[];
   /** Characters present at this location (name + id). */
   charactersPresent: Array<{ id: string; name: string }>;
+  /** Examinables currently available (prerequisite-filtered). */
+  availableExaminables: ClientExaminable[];
   onExamine: (query: string) => void;
   onTalkTo: (characterId: string) => void;
 }
@@ -33,6 +35,7 @@ export function LocationView({
   discoveredClues,
   examineHistory,
   charactersPresent,
+  availableExaminables,
   onExamine,
   onTalkTo,
 }: LocationViewProps) {
@@ -71,6 +74,29 @@ export function LocationView({
       <div className="px-6 py-5">
         <NarrativeText text={location.description} />
       </div>
+
+      {/* Available examinables — subtle hints for the player */}
+      {availableExaminables.length > 0 && (
+        <div className="border-t border-[var(--border-subtle)] px-6 py-3">
+          <span className="text-xs uppercase tracking-wider text-[var(--text-muted)]">
+            You notice:{" "}
+          </span>
+          {availableExaminables.map((ex, i) => (
+            <span key={ex.id}>
+              <button
+                onClick={() => onExamine(ex.name)}
+                className="text-sm text-[var(--text-secondary)] underline decoration-dotted underline-offset-2 hover:text-[var(--text-primary)] transition-colors"
+                title={ex.surfaceDetail}
+              >
+                {ex.name}
+              </button>
+              {i < availableExaminables.length - 1 && (
+                <span className="text-[var(--text-muted)]">, </span>
+              )}
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* Characters present */}
       {charactersPresent.length > 0 && (

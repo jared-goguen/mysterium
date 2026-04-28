@@ -73,6 +73,7 @@ export function GameBoard({ game }: GameBoardProps) {
         <MainPanel
           mystery={mystery}
           focus={gameState.focus}
+          gameState={gameState}
           explorations={gameState.explorations}
           conversations={gameState.conversations}
           npcStates={gameState.npcStates}
