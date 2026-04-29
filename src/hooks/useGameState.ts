@@ -58,7 +58,8 @@ type HookAction =
   | { type: "SET_STREAMING"; text: string | null }
   | { type: "SET_LOADING"; loading: boolean }
   | { type: "SET_ERROR"; error: string | null }
-  | { type: "SET_PENDING"; message: string | null };
+  | { type: "SET_PENDING"; message: string | null }
+  | { type: "MERGE_FOCUS_RESULT"; focusResult: FocusResult };
 
 function hookReducer(state: HookState, action: HookAction): HookState {
   switch (action.type) {
@@ -74,6 +75,17 @@ function hookReducer(state: HookState, action: HookAction): HookState {
       return { ...state, error: action.error, loading: false };
     case "SET_PENDING":
       return { ...state, pendingMessage: action.message };
+    case "MERGE_FOCUS_RESULT": {
+      if (!state.game) return state;
+      const current = asGameState(state.game);
+      const merged = applyFocus(
+        current,
+        { type: "FOCUS", target: current.focus },
+        action.focusResult,
+        Date.now(),
+      );
+      return { ...state, game: asClientState(merged) };
+    }
   }
 }
 
@@ -242,31 +254,26 @@ export function useGameState(): GameStateHook {
     if (!state.game) return;
     const game = state.game;
 
-    // If we might need summarization (leaving a character), ask the server
     const leavingCharacter =
       game.focus.type === "character" &&
       (target.type !== "character" || target.id !== game.focus.id);
 
-    if (leavingCharacter) {
-      dispatch({ type: "SET_LOADING", loading: true });
-      apiPost<{ focusResult: FocusResult }>("/api/focus", apiBody(game, { target }))
-        .then(({ focusResult }) => {
-          const next = applyFocus(asGameState(game), { type: "FOCUS", target }, focusResult, Date.now());
-          dispatch({ type: "SET_GAME", game: asClientState(next) });
-          dispatch({ type: "SET_LOADING", loading: false });
-        })
-        .catch((err) => {
-          // On error, still apply the focus change (just without summarization)
-          const next = applyFocus(asGameState(game), { type: "FOCUS", target }, undefined, Date.now());
-          dispatch({ type: "SET_GAME", game: asClientState(next) });
-          dispatch({ type: "SET_ERROR", error: err.message });
-        });
-      return;
-    }
-
-    // Simple navigation — no server call needed
+    // Always navigate immediately — never block on summarization
     const next = applyFocus(asGameState(game), { type: "FOCUS", target }, undefined, Date.now());
     dispatch({ type: "SET_GAME", game: asClientState(next) });
+
+    // Background summarization when leaving a character (non-blocking)
+    if (leavingCharacter) {
+      apiPost<{ focusResult: FocusResult }>("/api/focus", apiBody(game, { target }))
+        .then(({ focusResult }) => {
+          if (focusResult.conversationEnded) {
+            dispatch({ type: "MERGE_FOCUS_RESULT", focusResult });
+          }
+        })
+        .catch(() => {
+          // Summarization failure is non-critical — skip silently
+        });
+    }
   }, [state.game]);
 
   // -- Interact --
@@ -278,11 +285,9 @@ export function useGameState(): GameStateHook {
     const action = { type: "INTERACT" as const, message };
 
     dispatch({ type: "SET_LOADING", loading: true });
-    // Show player message immediately (optimistic)
-    if (game.focus.type === "character") {
-      dispatch({ type: "SET_PENDING", message });
-      dispatch({ type: "SET_STREAMING", text: "" });
-    }
+    // Show player message immediately (optimistic) for both locations and characters
+    dispatch({ type: "SET_PENDING", message });
+    dispatch({ type: "SET_STREAMING", text: "" });
 
     let fullText = "";
 

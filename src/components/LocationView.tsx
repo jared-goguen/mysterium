@@ -26,6 +26,12 @@ interface LocationViewProps {
   charactersPresent: Array<{ id: string; name: string }>;
   /** Examinables currently available (prerequisite-filtered). */
   availableExaminables: ClientExaminable[];
+  /** Text currently streaming from the examine response. Null when idle. */
+  streamingText: string | null;
+  /** Player query sent but not yet in examination history (shown optimistically). */
+  pendingMessage: string | null;
+  /** Whether an API call is in flight. */
+  loading: boolean;
   onExamine: (query: string) => void;
   onTalkTo: (characterId: string) => void;
 }
@@ -36,21 +42,24 @@ export function LocationView({
   examineHistory,
   charactersPresent,
   availableExaminables,
+  streamingText,
+  pendingMessage,
+  loading,
   onExamine,
   onTalkTo,
 }: LocationViewProps) {
   const [query, setQuery] = useState("");
   const historyEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll examination history to bottom when new results arrive
+  // Auto-scroll examination history to bottom when new results or streaming text arrive
   useEffect(() => {
     historyEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [examineHistory.length]);
+  }, [examineHistory.length, streamingText]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = query.trim();
-    if (!trimmed) return;
+    if (!trimmed || loading) return;
     onExamine(trimmed);
     setQuery("");
   }
@@ -59,7 +68,7 @@ export function LocationView({
     if (e.key === "Enter") {
       e.preventDefault();
       const trimmed = query.trim();
-      if (!trimmed) return;
+      if (!trimmed || loading) return;
       onExamine(trimmed);
       setQuery("");
     }
@@ -150,6 +159,28 @@ export function LocationView({
                 )}
               </div>
             ))}
+
+            {/* Pending examination query (sent but not yet in history) */}
+            {pendingMessage && (
+              <div className="space-y-2">
+                {examineHistory.length > 0 && (
+                  <div className="border-t border-[var(--border-subtle)] pt-4" />
+                )}
+                <p className="noir-header">
+                  &rsaquo; {pendingMessage}
+                </p>
+                {streamingText !== null && (
+                  <div className="streaming-cursor">
+                    {streamingText ? (
+                      <NarrativeText text={streamingText} />
+                    ) : (
+                      <p className="narrative animate-pulse text-[var(--accent-clue)]">…</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div ref={historyEndRef} />
           </div>
         )}
@@ -163,12 +194,13 @@ export function LocationView({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
+            disabled={loading}
             placeholder="What catches your eye?"
-            className="flex-1 rounded bg-[var(--bg-input)] px-3 py-2 font-mono text-sm text-[var(--text-primary)] placeholder-neutral-600 outline-none focus:ring-1 focus:ring-[var(--accent-clue)]/50"
+            className="flex-1 rounded bg-[var(--bg-input)] px-3 py-2 font-mono text-sm text-[var(--text-primary)] placeholder-neutral-600 outline-none focus:ring-1 focus:ring-[var(--accent-clue)]/50 disabled:opacity-40"
           />
           <button
             type="submit"
-            disabled={!query.trim()}
+            disabled={!query.trim() || loading}
             className="rounded bg-[var(--bg-surface)] px-4 py-2 text-sm text-[var(--text-primary)] transition-colors hover:bg-[var(--border-warm)] disabled:cursor-not-allowed disabled:opacity-40"
           >
             Examine

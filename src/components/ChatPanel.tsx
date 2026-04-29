@@ -197,7 +197,7 @@ export function ChatPanel({
                   </span>
                   <div className="h-px flex-1 bg-[var(--border-warm)]" />
                 </div>
-                <div className="pl-1">
+                <div className="pl-1 streaming-cursor">
                   {streamingText ? (
                     <NarrativeText text={streamingText} />
                   ) : (

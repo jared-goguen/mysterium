@@ -74,6 +74,9 @@ export function MainPanel({ mystery, focus, gameState, explorations, conversatio
                 ? clientAvailableExaminables(gameState, focus.id)
                 : []
             }
+            streamingText={streamingText}
+            pendingMessage={pendingMessage}
+            loading={loading}
             onExamine={onExamine}
             onTalkTo={onTalkTo}
           />
